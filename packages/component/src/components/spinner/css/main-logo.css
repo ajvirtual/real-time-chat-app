@@ -1,0 +1,42 @@
+@tailwind components;
+
+@layer components {
+
+	/*Boite*/
+	.main-spinner-bar-loader span {
+		@apply !bg-primary;
+	}
+
+}
+
+.progress {
+	height: 5px;
+	background-color: var(--default);
+}
+.progress .progress-bar{
+	background-color: var(--danger);
+}
+
+
+.main-loader{
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+.main-loader.absolute {
+	position: absolute;
+}
+
+.main-loader .progress{
+	height: 3px;
+}
+.main-loader .progress .progress-bar{
+	background-color: var(--danger);
+	height: 100%;
+}

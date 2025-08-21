@@ -1,0 +1,10 @@
+@tailwind components;
+
+@layer components {
+    .client-error {
+        background-image: url("../assets/img/error_bg.png");
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: right;
+    }
+}

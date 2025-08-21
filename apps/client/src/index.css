@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    body {
+        font-family: 'Roboto';
+    }
+
+    h1,
+    .h1 {
+        @apply text-[64px] text-black font-bold;
+    }
+
+    h2,
+    .h2 {
+        @apply text-[42px] text-black font-bold;
+    }
+
+    h3,
+    .h3 {
+        @apply text-[36px] text-black font-bold;
+    }
+
+    h4,
+    .h4 {
+        @apply text-[24px] text-black;
+    }
+
+    h5,
+    .h5 {
+        @apply text-[18px] text-black;
+    }
+
+    h6,
+    .h6 {
+        @apply text-[14px] text-black;
+    }
+
+    p,
+    .p {
+        @apply text-[14px] text-[#555] leading-[1.3em];
+    }
+
+    label,
+    .label {
+        @apply text-[12px] font-bold;
+    }
+
+
+    b,
+    strong {
+        @apply font-bold;
+    }
+
+    a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    hr {
+        border-color: #6C6868;
+    }
+
+    .menu-tabs {
+        @apply relative text-primary p-0 border-b-[3px] border-default;
+    }
+    
+
+    .menu-tabs .menu-item {
+        @apply rounded-none;
+    }
+
+
+    /* .menu-tabs .menu-item.active {
+        @apply border-pirtext-primary;
+    } */
+
+    .menu-tabs .menu-item a:hover,
+    .menu-tabs .menu-item a:active,
+    .menu-tabs .menu-item.active a {
+        @apply bg-primary text-white rounded-none border-b-[3px] border-default mb-[-4px];
+    }
+
+    .menu-tabs .menu-item .item-badge {
+        @apply bg-[#120EE41F]/[.12] text-black;
+    }
+
+    .menu-tabs .menu-item a {
+        @apply gap-2;
+    }
+
+    .control .switch.active .slider {
+        @apply bg-primary;
+    }
+
+    .control .switch.active .slider::before {
+        transform: translateX(18px);
+    }
+
+    .control .slider::before {
+        top: 6px;
+        left: 8px;
+        width: 12px;
+        height: 12px;
+    }
+
+    .control input,
+    .control textarea {
+        @apply border-[1px] border-default rounded-none;
+    }
+
+    .control label {
+        @apply text-[11px] font-bold;
+    }
+
+    /** Breadcrumbs **/
+    .parent-layout .breadcrumb {
+        @apply border-[2px] border-solid border-default p-1 rounded-full flex gap-4 overflow-x-auto;
+    }
+
+    .parent-layout .breadcrumb .breadcrumb-item {
+        @apply text-sm flex items-center justify-start;
+    }
+
+    .parent-layout .breadcrumb .breadcrumb-item.active a,
+    .parent-layout .breadcrumb .breadcrumb-item.active span {
+        @apply bg-default whitespace-nowrap;
+    }
+
+    .parent-layout .breadcrumb .breadcrumb-item a,
+    .parent-layout .breadcrumb .breadcrumb-item span {
+        @apply px-4 py-2 text-center rounded-full text-nowrap;
+    }
+
+    .parent-layout .breadcrumb .breadcrumb-item .separator {
+        @apply ml-2;
+    }
+
+    .parent-layout .breadcrumb .breadcrumb-item .separator::after {
+
+        font-family: "Font Awesome 6 Free";
+        font-style: normal;
+        font-variant: normal;
+        font-weight: 900;
+        content: "\f054";
+    }
+
+    /** List */
+    .parent-layout .main-content .list .pagination {
+        @apply items-center gap-4;
+    }
+
+    .parent-layout .main-content .list .pagination .btn {
+        @apply p-2 text-sm bg-transparent shadow-none;
+    }
+
+    .parent-layout .main-content .list .pagination.pagination-up {
+        @apply hidden;
+    }
+
+    /** Menu Item */
+    header nav .control-chip,
+    .menu .menu-item .control-chip {
+        @apply py-[0px] px-[8px];
+    }
+
+    /** Left sidebar */
+    .sidebar-left{
+        @apply bg-default shadow-sm md:w-[80px] overflow-y-auto fixed sm:sticky top-0 bottom-0 overflow-x-hidden py-4 z-20 transition-all duration-[250ms] ease-in-out  ml-[-320px] md:ml-0;
+    }
+    .sidebar-left.open{
+        @apply ml-0 p-0 md:ml-0 z-[999] w-[320px] md:w-[240px] h-screen;
+    }
+    .sidebar-left-mask {
+        @apply fixed top-0 bottom-0 left-0 right-0 sm:w-0 bg-black/70  transition-all duration-1000 ease-in-out opacity-0 -z-10;
+    }
+    .sidebar-left-mask.open {
+        @apply opacity-100 z-[998];
+    }
+
+    .sidebar-left .menu-item {
+        @apply text-[#555];
+    }
+
+    .sidebar-left .menu-item i {
+        @apply text-[#555];
+    }
+
+    .sidebar-left .menu-item-category>a {
+        @apply text-black font-bold mt-4;
+    }
+
+    .sidebar-left .menu-item-category>a:hover,
+    .sidebar-left .menu-item-category>a:active {
+        @apply bg-none;
+    }
+
+    /** Menu Item */
+    header nav .control-chip, 
+    .menu .menu-item .control-chip {
+        @apply py-[0px] px-[8px];
+    }
+
+    .admin-layout .main-content {
+        @apply sm:py-8 py-4 px-4 sm:px-0 !pb-40 flex flex-col gap-5 flex-1 max-w-2xl w-full min-h-screen sm:ml-10 xl:ml-40 overflow-hidden;
+    }
+
+    .admin-layout .btn.btn-primary {
+        @apply text-white;
+    }
+
+}
+
+.box {
+    border-radius: 0;
+}
+
+.btn {
+    border-radius: 0;
+}
+
+.sun-editor-editable,
+.sun-editor-editable * {
+    font-family: 'Myriad' !important;
+}

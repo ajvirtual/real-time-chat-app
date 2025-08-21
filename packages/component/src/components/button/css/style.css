@@ -1,0 +1,54 @@
+@tailwind components;
+
+@layer components {
+    .btn {
+        @apply text-[14px] leading-none cursor-pointer px-5 py-3 flex justify-center items-center gap-2 text-center;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .btn.btn-sm {
+        @apply text-[12px] py-2 px-4;
+    }
+
+    .btn.btn-icon {
+        @apply flex items-center justify-center;
+    }
+
+    .btn.btn-primary {
+        @apply bg-primary text-white;
+    }
+
+    .btn.btn-primary:hover {
+        @apply opacity-80;
+    }
+
+    .btn.btn-secondary {
+        @apply bg-secondary text-white;
+    }
+
+    .btn.btn-secondary:hover {
+        @apply opacity-80;
+    }
+
+    .btn.btn-danger {
+        @apply bg-danger text-white;
+    }
+
+    .btn.btn-danger:hover {
+        @apply opacity-80;
+    }
+
+    .btn.btn-default {
+        @apply bg-default;
+    }
+
+    .btn.btn-default:hover {
+        @apply opacity-80;
+    }
+
+    .btn:disabled,
+    .btn.active:disabled,
+    .btn:hover:disabled {
+        @apply opacity-40 cursor-default;
+    }
+}

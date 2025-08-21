@@ -1,0 +1,20 @@
+packages:
+  - apps/**
+  - packages/**
+  - modules/**
+  - server/**
+  - cypress/**
+
+onlyBuiltDependencies:
+  - '@apollo/protobufjs'
+  - '@parcel/watcher'
+  - bcrypt
+  - core-js
+  - core-js-pure
+  - cypress
+  - es5-ext
+  - esbuild
+  - nx
+  - protobufjs
+  - tsparticles-engine
+  - type-graphql

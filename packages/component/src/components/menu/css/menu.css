@@ -1,0 +1,44 @@
+@tailwind components;
+
+@layer components {
+    .menu {
+        @apply flex flex-col p-1;
+    }
+    .menu.menu-horizontal {
+        @apply flex-row overflow-auto;
+    }
+    .menu.menu-horizontal a {
+        @apply w-auto whitespace-nowrap;
+    }
+    .menu-item a {
+        @apply flex flex-row items-center justify-between px-3 py-2 transition-all w-full;
+        font-size: 14px;
+    }
+    .menu-item a .item-header {
+        @apply flex items-center gap-4;
+    }
+    .menu-item a .item-footer {
+        @apply flex items-center;
+    }
+    .menu-item a:hover,
+    .menu-item a:active,
+    .menu-item.active a {
+        @apply bg-[#737373]/[.2] rounded-md;
+    }
+
+    .menu-item a i {
+        @apply w-6 text-center;
+        font-size: 14px;
+    }
+
+    .menu-item a .icon-menu img {
+        @apply w-4;
+    }
+
+    .menu-item ul {
+        @apply p-0 m-0;
+    }
+    .menu-item .item-badge {
+        @apply px-2 bg-danger text-white rounded-full text-center;
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "../../packages/tsconfig/server.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "baseUrl": "src",
+    "paths": {
+      "@hooks/*": [
+        "hooks/*"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

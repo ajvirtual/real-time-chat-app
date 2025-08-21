@@ -1,0 +1,37 @@
+{
+    "name": "@chat/client",
+    "version": "1.0.0",
+    "dependencies": {
+        "@chat/component": "workspace:*",
+        "@chat/config": "workspace:*",
+        "@chat/chat-support": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/mime-types": "^2.1.1"
+    },
+    "scripts": {
+        "start": "react-scripts start",
+        "build": "pnpm run build:esbuild && pnpm run postbuild",
+        "build:esbuild": "node build.js",
+        "build:server": "node --experimental-json-modules build-server.js",
+        "postbuild": "pnpm run build:server && node ./copy-env.js",
+        "start:server-dev": "env-cmd -f ../../.env.test ts-node ./src/server.ts",
+        "start:server-preprod": "env-cmd -f ../../.env.preprod.harea node ./build/server.js",
+        "start:development": "env-cmd -f ../../.env.development env-cmd -f ./.env.development pnpm start",
+        "start:test": "env-cmd -f ../../.env.test pnpm start",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject"
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    }
+}

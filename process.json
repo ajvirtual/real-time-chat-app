@@ -1,0 +1,9 @@
+{
+    "apps" : [
+        {
+            "name"        : "gateway-service",
+            "script"      : "./index.js",
+            "cwd"      : "./server/gateway-service/dist"
+        }
+    ]
+}

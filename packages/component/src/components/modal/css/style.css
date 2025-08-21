@@ -1,0 +1,141 @@
+/*Param*/
+.modal-mask{
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1030;
+	background-color: #22222280;
+	overflow-y: auto;
+
+	animation-name: fadeInDown;
+	animation-duration: 0.2s;
+}
+.modal-mask .modal-dialog{
+	/*height: 90%;*/
+	margin-top: 80px;
+}
+.modal-mask .modal-body{
+	
+}
+.modal-mask .modal-content{
+	border-radius: 2px;
+	/*height: 80%;*/
+}
+.modal-footer{
+	border-color: var(--default);
+	justify-content: space-between;
+}
+
+.modal-mask .modal-dialog.modal-full{
+	max-width: unset;
+	margin: 60px;
+	margin-top: 30px;
+}
+
+.modal-mask .nav-pills{
+	/*height: 100%;*/
+	padding-bottom: 240px;
+	border-right: 1px solid var(--default);
+}
+.modal-mask .nav-pills h3{ 
+	margin-top: 0;
+ }
+
+.modal-mask .nav-pills li{
+	
+}
+
+.modal-mask .nav-pills li a{
+	border-radius: 0px;
+	color: var(--black);
+}
+.modal-mask .nav-pills li.active > a{
+	background-color: var(--default);
+	color: var(--black);
+}
+.modal-mask .nav-pills li.active > a:hover, 
+.modal-mask .nav-pills li.active > a:active{
+	color: var(--black);
+}
+
+.simple-modal{
+	position: fixed;
+	top: 130px;
+	right: 20px;
+	width: 240px;
+	padding: 10px;
+	background-color: #fff;
+	box-shadow: 2px 0px 12px #111;
+	z-index: 9999;
+}
+.simple-modal .simple-modal-header{
+	cursor: move;
+	
+}
+.simple-modal h3{
+	margin-top: 0px;
+}
+.simple-modal input:not([type=checkbox]){
+	width: 100%;
+}
+.simple-modal .btn-tool-box{
+	
+}
+.simple-modal .btn-tool-box .btn{
+	border: none;
+	border-radius: 0px;
+	border-top: 1px solid #bbb;
+	border-bottom: 1px solid #bbb;
+}
+.simple-modal .btn-tool-box label{
+	margin-top: 0px;
+	margin-bottom: 0px;
+}
+.simple-modal .btn-tool-box label input{
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.simple-modal .btn-tool-box label:hover input ~ .btn {
+background-color: #eee;
+}
+
+/* When the checkbox is checked, add a blue background */
+.simple-modal .btn-tool-box label input:checked ~ .btn {
+background-color: #bbb;
+}
+
+/*Modal*/
+.modal-dialog{
+
+}
+.modal-dialog .spinner-container{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #fff;
+	z-index: 999;
+}
+.modal-dialog .spinner-container .spinner{
+	position: absolute;
+	top: 35%;
+	left: 50%;
+}
+.modal-header h1{
+	font-family: var(--font-family-bold);
+	font-size: 24px;
+	margin-bottom: 0px;
+}
+
+.btn-close-modal{
+	position: absolute;
+	top: 0px;
+	right: 0px;
+	background-color: transparent;
+	z-index: 99;
+}

@@ -1,0 +1,35 @@
+{
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "display": "Server",
+    "extends": "./base.json",
+    "compilerOptions": {
+        "module": "commonjs",
+        "noImplicitReturns": false,
+        "sourceMap": true,
+        "declaration": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "strictPropertyInitialization": false,
+        "target": "es6",
+        "plugins": [
+            {
+                "transform": "typescript-transform-paths"
+            },
+            {
+                "transform": "typescript-transform-paths",
+                "afterDeclarations": true
+            }
+        ]
+    },
+    "include": [
+      "src"
+    ],
+    "exclude": [
+      "node_modules",
+      "dist",
+      "example"
+    ]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@chat/user-service",
+  "version": "1.0.0",
+  "description": "",
+  "author": "ajvirtual",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.modern.js",
+  "source": "src/index.tsx",
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "start": "ts-node -r tsconfig-paths/register ./src/server.ts",
+    "start:development": "cross-env NODE_ENV=development pnpm run start",
+    "build": "pnpm run typescript && pnpm run build:esbuild",
+    "build:server": "pnpm run build",
+    "build:esbuild": "node --experimental-json-modules build.js",
+    "serve": "node ./dist/index.js",
+    "serve:development": "cross-env NODE_ENV=development pnpm run serve",
+    "serve:test": "cross-env NODE_ENV=test pnpm run serve",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "typescript": "ttsc --emitDeclarationOnly --outDir dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "form-data": "^4.0.0",
+    "node-fetch": "2",
+    "ui-avatar-svg": "^1.0.0",
+    "xlsx": "^0.18.5",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@types/multer": "^1.4.5",
+    "@chat/config": "workspace:*",
+    "@chat/context": "workspace:*",
+    "@chat/graphql": "workspace:*"
+  }
+}

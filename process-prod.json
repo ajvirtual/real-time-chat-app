@@ -1,0 +1,24 @@
+{
+    "apps" : [
+        {
+            "name"        : "gateway-service",
+            "script"      : "./server/gateway-service/dist/index.js"
+        },
+        {
+            "name"        : "graphql-service",
+            "script"      : "./server/graphql-service/dist/index.js"
+        },
+        {
+            "name"        : "file-service",
+            "script"      : "./server/file-service/dist/index.js"
+        },
+        {
+            "name"        : "user-service",
+            "script"      : "./server/user-service/dist/index.js"
+        },
+        {
+            "name"        : "chat-service",
+            "script"      : "./server/chat-service/dist/index.js"
+        }
+    ]
+}

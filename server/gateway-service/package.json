@@ -1,0 +1,40 @@
+{
+  "name": "@chat/gateway-service",
+  "version": "1.0.0",
+  "description": "",
+  "author": "ajvirtual",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.modern.js",
+  "source": "src/index.tsx",
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "start": "ts-node -r tsconfig-paths/register ./src/index.ts",
+    "start:services": "npx concurrently \"npx nx run @mzara/graphql-service:serve\" \"npx nx run @mzara/user-service:serve\" \"npx nx run @mzara/file-service:serve\" \"npx nx run @mzara/evaluation-service:serve\" \"npx nx run @mzara/email-service:serve\" \"npx nx run @mzara/document-service:serve\"",
+    "start:development": "cross-env NODE_ENV=development pnpm run start",
+    "start:test": "cross-env NODE_ENV=test pnpm run start",
+    "build": "tsc --noEmit && pnpm run build:esbuild",
+    "build:server": "pnpm run build",
+    "build:esbuild": "node --experimental-json-modules build.js",
+    "serve": "node ./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@chat/file-service": "workspace:*",
+    "@chat/user-service": "workspace:*",
+    "@chat/graphql-service": "workspace:*",
+    "@chat/chat-service": "workspace:*",
+    "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.7.5",
+    "@chat/context": "workspace:*",
+    "@chat/graphql": "workspace:*",
+    "@mzara/graphql-service-core": "^1.2.24",
+    "@chat/config": "workspace:*"
+  }
+}
