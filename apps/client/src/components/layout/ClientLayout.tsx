@@ -1,7 +1,6 @@
-import { Outlet } from "react-router-dom";
-import { GenericSuspense } from "@chat/component";
 import Aurora from "components/background/Aurora";
 import './css/client-layout.css';
+import ChatSupportContainer from "components/chat-support/container/ChatSupportContainer";
 
 const ClientLayout = () => {
     return (
@@ -17,9 +16,7 @@ const ClientLayout = () => {
                 </div>
 
                 <main className="main-wrapper">
-                    <GenericSuspense>
-                        <Outlet />
-                    </GenericSuspense>
+                    <ChatSupportContainer />
                 </main>
             </div>
         </>

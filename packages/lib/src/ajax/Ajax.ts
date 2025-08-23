@@ -1,6 +1,4 @@
 import { symetricEncrypt, try_parse_json } from '../utils'
-import { gql, GraphQLClient } from "graphql-request";
-import { Variables } from 'graphql-request/dist/types';
 
 /**
  * It's a library for sending request usign XmlHttpRequest how's has syntax Jquery friendly and designed for codeigniter REST API. 
@@ -286,25 +284,6 @@ export class Ajax {
         })
     }
 
-    /**
-     * Send graphql request
-     */
-    async graphql(query: string, variables?: Variables) {
-        
-        const secret_key = process.env.REACT_APP_GRAPHQL_SECRET_KEY || ""
-
-        const _query = secret_key ? await symetricEncrypt(query, secret_key) : query
-        const _query_ = gql`${_query}`
-        const client = new GraphQLClient(this.graphql_endpt as string)
-        const headers: Record<string, any> = { cache: 'no-cache' }
-        const token = this.find_token(this.token_index)
-
-        if (token) headers['x-app-token'] = token;
-        if (this.app_name) headers['x-app-name'] = this.app_name;
-
-        return client.request(_query_, variables, headers)
-
-    }
 }
 
 export type RequestParamType = Record<string, string | Blob | File>

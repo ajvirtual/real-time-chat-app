@@ -5,7 +5,6 @@ const srcFiles = [
     '../../.env.development',
     '../../.env.release',
     '../../.env.production',
-    '../../.env.test'
 ]
 
 const destFiles = [
@@ -13,7 +12,6 @@ const destFiles = [
     '.env.development',
     '.env.release',
     '.env.production',
-    '.env.test'
 ]
 
 srcFiles.forEach((item, index) => {

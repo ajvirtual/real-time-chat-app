@@ -24,17 +24,11 @@
     "dist"
   ],
   "dependencies": {
-    "@chat/file-service": "workspace:*",
-    "@chat/user-service": "workspace:*",
-    "@chat/graphql-service": "workspace:*",
-    "@chat/chat-service": "workspace:*",
-    "compression": "^1.7.4"
+    "compression": "^1.7.4",
+    "@chat/context": "workspace:*"
   },
   "devDependencies": {
     "@types/compression": "^1.7.5",
-    "@chat/context": "workspace:*",
-    "@chat/graphql": "workspace:*",
-    "@mzara/graphql-service-core": "^1.2.24",
     "@chat/config": "workspace:*"
   }
 }

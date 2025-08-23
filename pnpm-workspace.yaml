@@ -1,9 +1,7 @@
 packages:
   - apps/**
   - packages/**
-  - modules/**
   - server/**
-  - cypress/**
 
 onlyBuiltDependencies:
   - '@apollo/protobufjs'
@@ -17,4 +15,3 @@ onlyBuiltDependencies:
   - nx
   - protobufjs
   - tsparticles-engine
-  - type-graphql

@@ -1,19 +1,16 @@
-import { useTranslations } from "@chat/component";
 import { ClientError } from "./ClientError";
 import { useCallback, useState } from "react";
 
 const ErrorPage = () => {
     const [, updateState] = useState<unknown>();
 
-    const [SUBTITLE, DESCRIPTION] = useTranslations(i18n);
-
     const forceUpdate = useCallback(() => updateState({}), []);
 
     return (
         <ClientError
             title={404}
-            subtitle={SUBTITLE}
-            message={DESCRIPTION}
+            subtitle={"Page Not Found"}
+            message={"Sorry, the page you are looking for does not exist."}
             onRetryClick={() => forceUpdate()}
         />
     );

@@ -1,14 +1,10 @@
-import { AppRoot, MainLogo } from "@chat/component";
-import { Routes } from "./page/Routes";
+import MainContainer from "container/MainContainer";
 
 const App = () => {
 
     return (
-        <AppRoot
-            routes={Routes}
-            protectedRoutes="*"
-            suspenseFallback={<MainLogo />}
-        />
+        <MainContainer />
     );
+    
 };
 export default App;

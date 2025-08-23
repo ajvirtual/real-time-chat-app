@@ -1,6 +1,5 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useTranslation, useTranslationRoute } from "@chat/component";
 import "../css/error.css";
 
 export const ClientError = ({
@@ -12,8 +11,6 @@ export const ClientError = ({
     retry,
     onRetryClick,
 }: ClientErrorProps) => {
-    const t = useTranslation();
-    const getTranslatedRoute = useTranslationRoute();
 
     return (
         <div
@@ -34,9 +31,9 @@ export const ClientError = ({
                 <div className="flex items-center justify-center gap-2">
                     <Link
                         className="btn btn-primary"
-                        to={getTranslatedRoute("")}
+                        to={"/"}
                     >
-                        {t("std_home_page")}
+                        Go Home
                     </Link>
 
                     <button
@@ -44,7 +41,7 @@ export const ClientError = ({
                         onClick={onRetryClick}
                         data-testid="generic-suspense-error-retry-btn"
                     >
-                        {retry || t("std_retry")}
+                        {retry || "Retry"}
                     </button>
                 </div>
 

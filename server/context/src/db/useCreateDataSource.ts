@@ -1,10 +1,10 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { Entities } from '@chat/graphql';
 import { MigrationV1 } from '../migration/v1';
 import { useSetGlobalAppDataSource } from './useSetGlobalAppDataSource';
+import { Entities } from 'types';
 
 export const useCreateDataSource = async (options: Partial<DataSourceOptions>, runMigration?: boolean) => {
-
+    console.log(options)
     const AppDataSource = new DataSource({
         ...(defaultOptions),
         ...options,

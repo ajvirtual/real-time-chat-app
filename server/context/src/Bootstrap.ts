@@ -2,11 +2,10 @@ import 'reflect-metadata';
 import express, { Express, IRouterHandler, Router } from 'express';
 import http from 'http'
 import bodyParser from 'body-parser'
+import cors from 'cors'
 import { ENV } from './config/env';
 import { corsMiddleware } from './middleware';
 import { useCreateDataSource } from './db';
-import { userContextMiddleware } from 'middleware/UserContextMiddleware';
-import { logRequestMiddleware } from 'middleware/LogRequestMiddleware';
 
 export const getExpressApp = (props: AppProps): Express => {
     const app = express();
@@ -14,10 +13,18 @@ export const getExpressApp = (props: AppProps): Express => {
     app.use(express.json({ limit: `${ENV.PAYLOAD_SIZE_LIMIT || 1}mb` }));
     app.use(bodyParser.json())
     app.use(corsMiddleware)
-    app.use(userContextMiddleware)
-    // app.use(autorizedRequestMiddleware)
+    app.use(
+        cors({
+            origin: ENV.CLIENT_URL || 'http://localhost', // Replace with your client URL
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            credentials: true, // Allow cookies and credentials
+        })
+    );
+    app.use((req, res, next) => {
+        console.log(`[CORS Debug] Origin: ${req.headers.origin}`);
+        next();
+    });
     props.middlewares?.forEach((item) => app.use(item as any))
-    app.use(logRequestMiddleware)
     // Routes
     props.controllers && app.use(props.controllers)
     // Ops

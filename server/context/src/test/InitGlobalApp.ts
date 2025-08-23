@@ -1,4 +1,3 @@
-import { TUserAgent } from "@chat/graphql"
 import { AppProps, getExpressApp } from "Bootstrap"
 import { ENV } from "config/env"
 import { useCreateDataSource } from "db"
@@ -42,17 +41,4 @@ export const closeDataSource = () => {
 export const getRequest = () => {
     const app = getGlobalApp()
     return request(app)
-}
-
-export const getUserAgent = (): TUserAgent => {
-    return {
-        browser: 'Unit test',
-        isBot: false,
-        isDesktop: false,
-        isMobile: false,
-        os: process.platform,
-        platform: process.platform,
-        source: 'local',
-        version: '1.0.0'
-    }
 }

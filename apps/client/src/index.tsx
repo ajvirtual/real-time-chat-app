@@ -3,9 +3,6 @@ import ReactDOM from "react-dom";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import "animate.css";
-import "@chat/component/dist/main.css";
-import "@chat/component/dist/index.css";
-import "@chat/chat-support/dist/main.css";
 import "./index.css";
 
 ReactDOM.render(

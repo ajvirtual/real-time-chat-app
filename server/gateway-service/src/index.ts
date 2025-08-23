@@ -1,7 +1,6 @@
 import express, { Express } from 'express';
 import { ENV, getExpressApp, useCreateDataSource } from '@chat/context';
 import http from 'http'
-import { createProxyMiddleware } from 'http-proxy-middleware'
 import compression from 'compression'
 import { getReverseProxy } from 'ReverseProxy';
 import { getControllerImport } from 'ControllerImport';
@@ -61,7 +60,6 @@ export const bootstrap = async () => {
     const app = await getExpressApp({
         port: ENV.SERVER_GATEWAY_PORT
     })
-
     app.use(compression({ filter: shouldCompress }))
     if (ENV.NODE_ENV === 'production') {
         getReverseProxy(app)
