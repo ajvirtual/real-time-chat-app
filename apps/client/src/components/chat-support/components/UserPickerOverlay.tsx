@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 
 type TProps = {
     open: boolean;
-    onPick: (userId: number, peerId: number) => void;
+    onPick: (userId: number, peerId: number, peerName: string) => void;
 };
 
 export const UserPickerOverlay = ({ open, onPick }: TProps) => {
@@ -23,13 +23,13 @@ export const UserPickerOverlay = ({ open, onPick }: TProps) => {
                 <h1 style={styles.title}>Choose a user</h1>
                 <p style={styles.subtitle}>Pick the identity for this session.</p>
                 <div style={styles.grid}>
-                    <button style={styles.btn} onClick={() => onPick(1, 2)} aria-label="Sign in as User 1">
+                    <button style={styles.btn} onClick={() => onPick(1, 2, 'Bob Smith')} aria-label="Sign in as User 1">
                         <span style={styles.avatar}>1</span>
-                        <span>User 1</span>
+                        <span>Alice Doe</span>
                     </button>
-                    <button style={styles.btn} onClick={() => onPick(2, 1)} aria-label="Sign in as User 2">
+                    <button style={styles.btn} onClick={() => onPick(2, 1, 'Alice Doe')} aria-label="Sign in as User 2">
                         <span style={styles.avatar}>2</span>
-                        <span>User 2</span>
+                        <span>Bob Smith</span>
                     </button>
                 </div>
                 <p style={styles.hint}>You can change later from the menu.</p>

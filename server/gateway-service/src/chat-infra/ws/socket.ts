@@ -26,6 +26,7 @@ export function attachSocket(server: http.Server) {
     const messageRepository = dataSource?.getRepository(TMessage);
     const roomRepository = dataSource?.getRepository(TRoom);
     const fileRepository = dataSource?.getRepository(TFile);
+    const userRepository = dataSource?.getRepository(TUser);
 
     const io = new Server(server, {
         cors: { origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:4000"], credentials: true },
@@ -69,10 +70,16 @@ export function attachSocket(server: http.Server) {
                 }
             });
 
+            socket.on("joinRoom", async ({ userId, peerId }) => {
+                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
+                socket.data.roomId = room?.id;
+                socket.data.userId = userId;
+
+                await socket.join(room?.id?.toString());
+            });
+
             socket.on("getRoom", async ({ userId, peerId }) => {
                 const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
-                console.log('///// ROOM ID //////')
-                console.log(room.id)
                 socket.emit("room:id", room.id);
             });
 
@@ -198,20 +205,32 @@ export function attachSocket(server: http.Server) {
                 const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
                 try {
                     await messageRepository.update(messageIds, { readAt: moment().toLocaleString(), status: TMessageStatus.READ });
-                    socket.to(room).emit("read", { room, messageIds, by: userId });
+                    socket.to(room.id.toString()).emit("read", { room, messageIds, by: userId });
                 } catch (error) {
                     console.error("Error marking messages as read:", error);
                 }
             });
 
+            socket.on("user:online", async ({ userId, peerId }: { userId: number; peerId: number }) => {
+                await redis.set(keys.presence(userId), "online");
+                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
+                const user = await userRepository?.findOne({ where: { id: userId } });
+                socket.to(room.id.toString()).emit("user:online", { userId, userName: user?.fullName });
+            });
+
+            socket.on("user:active", async ({ roomId, userId, peerId }) => {
+                const key = keys.active(userId); 
+                await redis.set(key, "1", "EX", 60);
+
+                const peerKey = keys.active(peerId);
+                const peerOnline = await redis.get(peerKey);
+                socket.to(roomId.toString()).emit("peer:active", { online: !!peerOnline });
+            });
+
             socket.on("disconnect", async () => {
-                try {
-                    await redis.srem(keys.socketsByUser(userId), socket.id);
-                    const remaining = await redis.scard(keys.socketsByUser(userId));
-                    if (remaining === 0) await redis.set(keys.presence(userId), "offline");
-                } catch (error) {
-                    console.error("Error handling disconnect:", error);
-                }
+                socket.to(socket?.data?.roomId?.toString()).emit("peer:active", { online: false });
+                const key = keys.active(socket.data.userId);
+                await redis.del(key);    
             });
         } catch (error) {
             console.error("Error during connection:", error);

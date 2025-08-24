@@ -22,10 +22,14 @@ const ClientLayout = () => {
 
                 <UserPickerOverlay
                     open={!ids}
-                    onPick={(id, peerId) => setIds(id, peerId)}
+                    onPick={(id, peerId, peerName) => setIds(id, peerId, peerName)}
                 />
                 <main className="main-wrapper">
-                    <ChatSupportContainer userId={ids?.userId} peerId={ids?.peerId} />
+                    <ChatSupportContainer
+                        userId={ids?.userId}
+                        peerId={ids?.peerId}
+                        peerName={ids?.peerName}
+                    />
                 </main>
             </div>
         </>

@@ -36,6 +36,7 @@ const ChatSupportContainer = (props: TChatProps) => {
     const [fullscreenImage, setFullScreenImage] = useState<File | null>(null);
     const bottomRef = useRef<HTMLDivElement | null>(null);
     const hasScrolledToBottomRef = useRef<boolean>(false);
+    const [otherUser, setOtherUser] = useState<{ userName?: string; isOnline?: boolean } | null>(null);
 
     useEffect(() => {
         const newSocket = io(`http://localhost:${process.env.SERVER_CHAT_PORT ?? 4000}`, {
@@ -50,9 +51,20 @@ const ChatSupportContainer = (props: TChatProps) => {
         // Attach event listeners
         newSocket.on("connect", () => {
             console.log("WebSocket connected:", newSocket.id);
+            notifyOnlineStatus(newSocket)
+        });
+
+        newSocket.on("user:online", ({ userName }) => {
+            setOtherUser({ userName, isOnline: true});
+        });
+
+        newSocket.on("peer:active", ({ online }) => {
+            setOtherUser((prev) => ({ ...prev, isOnline: online }));            
         });
 
         newSocket.emit("getRoom", { userId: props?.userId, peerId: props?.peerId });
+
+        newSocket.emit("joinRoom", { userId: props?.userId, peerId: props?.peerId });
 
         newSocket.on("room:id", (room: number) => {
             setRoomId(room);
@@ -102,6 +114,12 @@ const ChatSupportContainer = (props: TChatProps) => {
         // Join the DM room
         newSocket.emit("join:dm", { peerId: props.peerId });
 
+        setInterval(() => {
+            if(newSocket && newSocket.connected) {
+                newSocket?.emit("user:active", { roomId: roomId, userId: props.userId, peerId: props.peerId });
+            }
+        }, 2000);
+
         setSocket(newSocket);
 
         // Cleanup event listeners on unmount
@@ -109,7 +127,7 @@ const ChatSupportContainer = (props: TChatProps) => {
             newSocket.disconnect();
             setSocket(null);
         };
-    }, [props.userId, props.peerId]);
+    }, [props.userId, props.peerId, roomId]);
 
     useEffect(() => {
         if(!hasScrolledToBottomRef.current && messages.length > 0) {
@@ -117,6 +135,10 @@ const ChatSupportContainer = (props: TChatProps) => {
             hasScrolledToBottomRef.current = true;
         }
     }, [messages, hasScrolledToBottomRef]);
+
+    const notifyOnlineStatus = (socket: any) => {
+        socket.emit("user:online", { userId: props.userId, peerId: props.peerId });
+    }
 
     const handleMessageSending = (message: Message) => {
         if (!socket) return;
@@ -221,7 +243,7 @@ const ChatSupportContainer = (props: TChatProps) => {
 
     return (
         <div className="chat-container">
-            <ChatHeader />
+            <ChatHeader {...otherUser} userName={props.peerName!}/>
             {fullscreenImage && (
                 <ImageViewer file={fullscreenImage} onClose={() => setFullScreenImage(null)} />
             )}
@@ -326,6 +348,7 @@ export type TChatProps = {
     userId?: number | null;
     peerId?: number | null;
     roomId?: number | null;
+    peerName?: string | null;
     onMessageSend?: (message: Message) => void
     replyingTo?: Message | null;
     onCancelReply?: () => void;

@@ -48,4 +48,6 @@ export const keys = {
     socketsByUser: (userId: number) => `sockets:user:${userId}`, // set
     typing: (room: string, userId: number) => `typing:${room}:${userId}`, // string TTL
     recent: (room: string) => `recent:${room}`, // zset score=timestamp, value=JSON
-};
+    messageScore: (room: string, messageId: number) => `msg_score:${room}:${messageId}`,
+    active: (userId: number) => `user:${userId}:active`, // string "1" with TTL
+}
