@@ -8,6 +8,7 @@ import { ImageViewer } from '../components/ImageViewer';
 import { MessageItem } from '../components/MessageItem';
 import moment from 'moment';
 import '../main.css'
+import { TypingIndicator } from '../components/TypingIndicator';
 
 export type Message = {
     id?: number;
@@ -61,10 +62,17 @@ const ChatSupportContainer = (props: TChatProps) => {
 
         newSocket.on("history", ({ messages }: any) => setMessages(messages));
         newSocket.on("receive", (message: any) => {
-            setMessages((prev) => [...prev, message])
+            setMessages((prev) => {
+                if(prev.find(m => m.id === message.id)) {
+                    return prev.map((msg) => msg.id === message.id ? { ...msg, ...message } : msg)
+                }
+                return [...prev, message]
+            })
         });
-        newSocket.on("typing", ({ isTyping }: any) => setTyping(isTyping));
-        newSocket.on("stopTyping", ({ isTyping }: any) => setTyping(isTyping));
+        newSocket.on("typing", ({ isTyping, roomId, userId }) => {
+            const allTypingIndicator = userId !== props?.userId;
+            setTyping(allTypingIndicator && isTyping);
+        });
         newSocket.on("read", ({ messageIds }: any) => {
             setMessages((prev) =>
                 prev.map((msg) =>
@@ -104,9 +112,9 @@ const ChatSupportContainer = (props: TChatProps) => {
     const handleMessageSending = (message: Message) => {
         if (!socket) return;
 
-        socket.emit("stopTyping", { to: props?.peerId });
+        socket.emit("typing", { isTyping: false, roomId: roomId, userId: props?.userId });
 
-        const tempId = moment().format('YYYYMMDDHHmmss');
+        const tempId = moment().toLocaleString();
         if (currentMessageToEdit) {
             setMessages((prev) =>
                 prev.map((msg) => (msg.id === currentMessageToEdit.id ? { ...msg, roomId: roomId!, ...message, edited: true } : msg))
@@ -132,19 +140,7 @@ const ChatSupportContainer = (props: TChatProps) => {
 
     const handleTyping = (isTyping: boolean) => {
         if (!socket) return;
-
-        if (isTyping) {
-            socket?.emit?.("typing", { roomId: roomId, userId: props?.userId });
-            return;
-        }
-
-        const TYPING_TIMEOUT = 2000; // ms
-        let typingTimeout: NodeJS.Timeout | null = null;
-        if (typingTimeout) clearTimeout(typingTimeout);
-
-        typingTimeout = setTimeout(() => {
-            socket.emit("stopTyping", { to: props?.userId });
-        }, TYPING_TIMEOUT);
+        socket?.emit?.("typing", { isTyping, roomId: roomId, userId: props?.userId });
     };
 
     const handleDeleteMessage = (id: number) => {
@@ -175,6 +171,8 @@ const ChatSupportContainer = (props: TChatProps) => {
                 message.id === id ? { ...message, reaction: undefined } : message
             )
         );
+        const message = messages.find((msg) => msg.id === id);
+        socket.emit("send", { tempId: message?.timestamp, roomId: roomId, userId: props?.userId, content: {...message, reaction: undefined} });
     };
 
     const bringToView = (id?: number) => {
@@ -189,11 +187,15 @@ const ChatSupportContainer = (props: TChatProps) => {
     };
 
     const handleReactToMessage = (id?: number, reaction?: string) => {
+        
         setMessages((prev) =>
             prev.map((message) =>
                 message.id === id ? { ...message, reaction: reaction || '' } : message
             )
         );
+        
+        const message = messages.find((msg) => msg.id === id);
+        socket.emit("send", { tempId: message?.timestamp, roomId: roomId, userId: props?.userId, content: {...message, reaction: reaction || ''} });
     };
 
     const handleCancelReplay = () => {
@@ -223,7 +225,7 @@ const ChatSupportContainer = (props: TChatProps) => {
                     const isConsecutive = index > 0 && messages[index - 1].userId === message.userId;
                     const showAvatar = !isConsecutive && message.userId !== props?.userId;
                     const isEmoji = message.text && /^[\p{Emoji}]/u.test(message.text.trim());
-                    console.log(message, props)
+
                     return (
                         <div key={message.id} className={`message-row ${message.userId === props?.userId ? 'user' : 'other'} ${isConsecutive ? 'mt-[10px]' : 'mt-[18px]'}`}>
                             <div className={`message-avatar ${!showAvatar && 'invisible'}`}>JA</div>
@@ -293,16 +295,19 @@ const ChatSupportContainer = (props: TChatProps) => {
                 })}
             </div>
 
-            <InputArea
-                onMessageSend={handleMessageSending}
-                replyingTo={replyingTo}
-                onCancelReply={handleCancelReplay}
-                roomId={roomId!}
-                currentMessageToEdit={currentMessageToEdit}
-                onCancelEdit={handleCancelEdit}
-                onTyping={handleTyping}
-                userId={props.userId}
-            />
+            <div className="relative">
+                <TypingIndicator isTyping={typing} />
+                <InputArea
+                    onMessageSend={handleMessageSending}
+                    replyingTo={replyingTo}
+                    onCancelReply={handleCancelReplay}
+                    roomId={roomId!}
+                    currentMessageToEdit={currentMessageToEdit}
+                    onCancelEdit={handleCancelEdit}
+                    onTyping={handleTyping}
+                    userId={props.userId}
+                />
+            </div>
         </div>
     );
 };

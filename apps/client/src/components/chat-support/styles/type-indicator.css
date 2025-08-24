@@ -1,0 +1,69 @@
+.typing-indicator {
+    position: absolute;
+    z-index: 9;
+    top: -54px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding-left: 20px;
+    padding-top: 20px;
+}
+
+.typing-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.typing-bubble {
+    background-color: #e9effb;
+    border-radius: 18px;
+    padding: 10px 16px;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 3px;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #6b7280;
+    border-radius: 50%;
+    animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: 0s;
+}
+
+@keyframes typing-bounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

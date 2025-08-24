@@ -59,7 +59,7 @@ export function attachSocket(server: http.Server) {
                     socket.emit("history", { room: room.id, messages: msgs });
                 } else {
                     const messages = await messageRepository.find({
-                        where: { room: { id: room.id } },   // 👈 disambiguates the id
+                        where: { room: { id: room.id } },
                         relations: ["sender", "receiver", "media", "parentMessage"],
                         order: { createdAt: "ASC" },
                         take: 50,
@@ -76,69 +76,123 @@ export function attachSocket(server: http.Server) {
                 socket.emit("room:id", room.id);
             });
 
-            socket.on("typing", async ({ roomId, userId }: { roomId: number; userId: number }) => {
-                console.log('///// TYPING //////')
-                console.log({ roomId, userId })
+           socket.on("typing", async ({ isTyping, roomId, userId }: { isTyping: boolean; roomId: number; userId: number }) => {
                 const room = await roomRepository!.findOneByOrFail({ id: roomId });
                 const key = keys.typing(room, userId);
                 if (!key) return;
-                const isTyping = !(await redis.get(key));
-                if (isTyping) {
-                    await redis.set(key, "1", "EX", 10); // 10s TTL
-                } else {
+                
+                const currentlyTyping = await redis.exists(key);
+                
+                if (isTyping && !currentlyTyping) {
+                    // User started typing
+                    await redis.set(key, "1", "EX", 10);
+                    socket.to(room.id.toString()).emit("typing", { isTyping: true, roomId: room.id, userId });
+                } else if (!isTyping && currentlyTyping) {
+                    // User stopped typing
                     await redis.del(key);
+                    socket.to(room.id.toString()).emit("typing", { isTyping: false, roomId: room.id, userId });
                 }
-                socket.to(room).emit("typing", { roomId, userId });
+                
+                console.log('socket rooms', { isTyping, roomId: room.id, userId });
             });
 
-            socket.on("send", async ({tempId, roomId, userId, content}) => {
+            socket.on("send", async ({ tempId, roomId, userId, content }) => {
                 const room = await roomRepository.findOne({
-                    where: {
-                        id: roomId
-                    },
+                    where: { id: roomId },
                     relations: ["users"]
                 });
+                if (!room) return;
+
                 const sender = await TUser.findOneByOrFail({ id: userId });
                 const receiver = room.users?.find((u) => u.id !== userId);
-                const parentMessage = content?.replyTo ? await messageRepository.findOneBy({ id: Number(content.replyTo) }) : undefined;
-                let media = null
+                const parentMessage = content?.replyTo
+                    ? await messageRepository.findOneBy({ id: Number(content.replyTo) })
+                    : undefined;
 
-                // if(content?.file) {
-                //     media = await fileRepository.create(
-                //         {
-                //             name: content.file.name,
-                //             hash: uuidv4(),
-                //             mimetype: content.file.type,
-                //         }
-                //     ).save()
-                // }
+                let media = null;
+                // TODO: handle file upload & save in TFile repository if needed
 
-                const msg = messageRepository.create({
-                    room,
-                    content: content?.text,
-                    reaction: content?.reaction,
-                    contentType: content?.file ? TMediaType?.FILE : TMediaType?.TEXT,
-                    status: TMessageStatus.DELIVERED,
-                    sender,
-                    receiver,
-                    media,
-                    parentMessage
-                });
-                const saved = await msg.save();
-                const content_ = {
-                    ...content,
-                    id: saved.id,
+                let content_;
+                console.log('id : ', content?.id)
+                const existingMessage = content?.id ? await messageRepository.findOneBy({ id: content?.id }) : null;
+                console.log('existingMessage', existingMessage)
+                if (existingMessage) {
+                    
+                    await messageRepository.update(existingMessage.id, {
+                        parentMessage: parentMessage,
+                        content: content.text,
+                        reaction: content.reaction
+                    });
+
+                    content_ = {
+                        ...content,
+                        id: existingMessage.id,
+                        edited: content.text !== existingMessage.content
+                    };
+
+                    const json = JSON.stringify(content_);
+
+                    // Remove existing message with the same id
+                    const key = keys.recent(room.id.toString());
+                    redis.get("mykey").then((result) => {
+                        console.log('list of mykey')
+                        console.log(result); // Prints "value"
+                    });
+                    /// KEY
+                    const existingMessages = await redis.zrange(key, 0, -1);
+                    console.log('existingMessage cached ', existingMessages)
+                    let prevScore = null;
+                    for (const msg of existingMessages) {
+                        const parsed = JSON.parse(msg);
+                        // console.log('parsed', parsed)
+                        if (parsed.id === existingMessage.id) {
+                            // console.log('found existing message in cache', parsed)
+                            prevScore = await redis.zscore(key, msg);
+                            // console.log('prevScore', prevScore)
+                            await redis.zrem(key, msg);
+                            break;
+                        }
+                    }
+
+                    socket.emit("ack", { tempId, id: existingMessage.id, updatedAt: moment().toLocaleString() });
+
+                    // Add the new/updated message
+                    await redis.zadd(key, prevScore, json);
+
+                    // Keep only the latest 100 messages
+                    await redis.zremrangebyrank(key, 0, -101);
+                    // Emit to other room members
+                    socket.to(room.id.toString()).emit("receive", content_);
+                } else {
+                    // CREATE new message
+                    const msg = messageRepository.create({
+                        room,
+                        content: content?.text,
+                        reaction: content?.reaction,
+                        contentType: content?.file ? TMediaType.FILE : TMediaType.TEXT,
+                        status: TMessageStatus.DELIVERED,
+                        sender,
+                        receiver,
+                        media,
+                        parentMessage
+                    });
+                    const saved = await messageRepository.save(msg);
+                    content_ = { ...content, id: saved.id, edited: false };
+                    // Ack to sender
+                    socket.emit("ack", { tempId, id: saved.id, createdAt: saved.createdAt });
+
+                    const json = JSON.stringify(content_);
+                    console.log("///// MESSAGE SENT //////");
+                    console.log(json);
+                    // Update Redis recent messages
+                    await redis.zadd(keys.recent(room.id.toString()), Date.now(), json);
+                    await redis.zremrangebyrank(keys.recent(room.id.toString()), 0, -101);
+
+                    // Emit to other room members
+                    socket.to(room.id.toString()).emit("receive", content_);
                 }
-                const json = JSON.stringify(content_);
-                console.log('///// MESSAGE SENT //////')
-                console.log(json)
-
-                await redis.zadd(keys.recent(room.id.toString()), Date.now(), json);
-                await redis.zremrangebyrank(keys.recent(room.id.toString()), 0, -101);
-
-                socket.emit("ack", { tempId, id: saved.id, createdAt: saved.createdAt });
-                socket.to(room.id.toString()).emit("receive", JSON.parse(json));
             });
+
 
             socket.on("read", async ({ peerId, messageIds }: { peerId: number; messageIds: number[] }) => {
                 const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);

@@ -13,6 +13,7 @@ export const InputArea = (props: TChatProps) => {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const attachmentInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (props.currentMessageToEdit) {
@@ -68,6 +69,14 @@ export const InputArea = (props: TChatProps) => {
     const handleChangedText = (e: any) => {
         setInputText(e.target.value)
         props?.onTyping?.(true);
+
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        typingTimeoutRef.current = setTimeout(() => {
+            props?.onTyping?.(false);
+        }, 500); 
     }
 
     const onAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
