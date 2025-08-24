@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { io } from "socket.io-client";
 import { ChatHeader } from '../components/ChatHeader';
 import { InputArea } from '../components/InputArea';
@@ -34,6 +34,7 @@ const ChatSupportContainer = (props: TChatProps) => {
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [currentMessageToEdit, setCurrentMessageToEdit] = useState<Message | null>(null);
     const [fullscreenImage, setFullScreenImage] = useState<File | null>(null);
+    const bottomRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         const newSocket = io(`http://localhost:${process.env.SERVER_CHAT_PORT ?? 4000}`, {
@@ -108,6 +109,10 @@ const ChatSupportContainer = (props: TChatProps) => {
             setSocket(null);
         };
     }, [props.userId, props.peerId]);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
     const handleMessageSending = (message: Message) => {
         if (!socket) return;
@@ -293,6 +298,7 @@ const ChatSupportContainer = (props: TChatProps) => {
                         </div>
                     );
                 })}
+                <div ref={bottomRef} />
             </div>
 
             <div className="relative">
