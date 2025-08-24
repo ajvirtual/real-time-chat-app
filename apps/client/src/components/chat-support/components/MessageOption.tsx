@@ -4,14 +4,14 @@ import ClickAwayListener from './ClickAwayListener';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
 type MessageOptionsProps = {
-    messageId: string;
+    messageId?: number | null;
     isFromUser: boolean;
-    activeMessageId: string | null;
-    setActiveMessageId: (id: string | null) => void;
-    onReact: (id: string, reaction?: string) => void;
-    onRespond: (id: string) => void;
-    onDelete: (id: string) => void;
-    onEdit: (id: string) => void;
+    activeMessageId?: number | null;
+    setActiveMessageId?: (id?: number | null) => void;
+    onReact: (id: number, reaction?: string) => void;
+    onRespond: (id: number) => void;
+    onDelete: (id: number) => void;
+    onEdit: (id: number) => void;
 };
 
 const MessageOptions: React.FC<MessageOptionsProps> = ({
@@ -27,7 +27,7 @@ const MessageOptions: React.FC<MessageOptionsProps> = ({
     const [showReactions, setShowReactions] = React.useState(false);
 
     const handleReact = (emojiData: EmojiClickData, event: MouseEvent) => {
-        onReact(messageId, emojiData.emoji);
+        onReact(messageId!, emojiData.emoji);
         setShowReactions(false);
     };
 
@@ -51,7 +51,7 @@ const MessageOptions: React.FC<MessageOptionsProps> = ({
             </button>
             <button
                 className="respond-button"
-                onClick={() => onRespond(messageId)}
+                onClick={() => onRespond(messageId!)}
             >
                 <MessageCircle width={20} opacity={0.1} transform="scale(1.1)" />
             </button>
@@ -61,9 +61,7 @@ const MessageOptions: React.FC<MessageOptionsProps> = ({
                         <button
                             className="ellipsis-button"
                             onClick={() =>
-                                setActiveMessageId(
-                                    activeMessageId === messageId ? null : messageId
-                                )
+                                setActiveMessageId?.(activeMessageId === messageId ? null : messageId)
                             }
                         >
                             <MoreHorizontal width={20} opacity={0.1} />
@@ -72,13 +70,13 @@ const MessageOptions: React.FC<MessageOptionsProps> = ({
                 }
 
                 {activeMessageId === messageId && (
-                    <ClickAwayListener onClickAway={() => setActiveMessageId(null)}>
+                    <ClickAwayListener onClickAway={() => setActiveMessageId?.(null)}>
                         <div className="dropdown-menu">
                             <button
                                 className="dropdown-item"
                                 onClick={() => {
-                                    onDelete(messageId)
-                                    setActiveMessageId(null)
+                                    onDelete(messageId!)
+                                    setActiveMessageId?.(null)
                                 }}
                             >
                                 <Trash2 /> Delete
@@ -86,8 +84,8 @@ const MessageOptions: React.FC<MessageOptionsProps> = ({
                             <button
                                 className="dropdown-item"
                                 onClick={() => {
-                                    onEdit(messageId)
-                                    setActiveMessageId(null);
+                                    onEdit(messageId!)
+                                    setActiveMessageId?.(null);
                                 }}
                             >
                                 <Edit /> Edit
@@ -95,8 +93,8 @@ const MessageOptions: React.FC<MessageOptionsProps> = ({
                             <button
                                 className="dropdown-item"
                                 onClick={() => {
-                                    onRespond(messageId)
-                                    setActiveMessageId(null)
+                                    onRespond(messageId!)
+                                    setActiveMessageId?.(null)
                                 }}
                             >
                                 <MessageCircle /> Reply

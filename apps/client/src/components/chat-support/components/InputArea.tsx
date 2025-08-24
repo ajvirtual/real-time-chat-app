@@ -32,12 +32,16 @@ export const InputArea = (props: TChatProps) => {
             event.preventDefault();
             if (inputText.trim()) {
                 const newMessage: Message = {
-                    id: Date.now().toString(),
                     text: inputText,
                     timestamp: moment().format('hh:mm A'),
-                    isFromUser: true,
+                    userId: props.userId!,
+                    roomId: props.roomId!,
                     replyTo: props.replyingTo?.id,
-                };
+                    edited: props.currentMessageToEdit ? true : false,
+                    isAttachment: attachmentInputRef.current?.files?.length ? true : false,
+                    file: (attachmentInputRef.current?.files?.length || 0) > 0 ? attachmentInputRef?.current?.files?.[0] : undefined,
+                    image: (imageInputRef.current?.files?.length || 0) > 0 ? URL.createObjectURL(imageInputRef?.current?.files?.[0]!) : undefined,
+                }
                 props?.onMessageSend?.(newMessage);
                 props.replyingTo && props?.onCancelReply?.();
                 textareaRef.current!.style.height = 'initial';
@@ -63,19 +67,19 @@ export const InputArea = (props: TChatProps) => {
 
     const handleChangedText = (e: any) => {
         setInputText(e.target.value)
-        // props?.onTyping(true);
+        props?.onTyping?.(true);
     }
 
     const onAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const newMessage: Message = {
-                id: Date.now().toString(),
                 text: "",
                 file: file,
                 isAttachment: true,
-                timestamp: moment().format('hh:mm A'),
-                isFromUser: true,
+                timestamp: Date.now().toString(),
+                roomId: props.roomId!,
+                userId: props.userId!,
                 replyTo: props.replyingTo?.id,
             };
             props?.onMessageSend?.(newMessage)
@@ -91,12 +95,11 @@ export const InputArea = (props: TChatProps) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const newMessage: Message = {
-                id: Date.now().toString(),
                 text: "",
                 image: URL.createObjectURL(file),
                 file: file,
-                timestamp: moment().format('hh:mm A'),
-                isFromUser: true,
+                timestamp: Date.now().toString(),
+                userId: props.userId!,
                 replyTo: props.replyingTo?.id,
             };
             props?.onMessageSend?.(newMessage);
@@ -131,7 +134,7 @@ export const InputArea = (props: TChatProps) => {
             </ClickAwayListener>
             <div className="input-container">
                 {props.replyingTo && (
-                    <ReplyPreview message={props.replyingTo} onCancel={props.onCancelReply || (() => { })} />
+                    <ReplyPreview message={props.replyingTo} isUserMessage={props.replyingTo?.userId === props?.userId} onCancel={props.onCancelReply || (() => { })} />
                 )}
 
                 <div className="input-wrapper">
@@ -146,7 +149,6 @@ export const InputArea = (props: TChatProps) => {
                         ref={textareaRef}
                         value={inputText}
                         onChange={handleChangedText}
-                        
                         onInput={handleInput}
                         onKeyDown={handleSendMessage}
                         autoFocus

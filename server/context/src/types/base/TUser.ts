@@ -1,7 +1,8 @@
-import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
+import { Column, Entity, ManyToMany, ManyToOne, OneToMany } from "typeorm";
 import { TMessage } from "..";
 import { TFile } from "./TFile";
 import { TSoftDeleteEntity } from "./TSoftDeleteEntity";
+import { TRoom } from "types/chat/TRoom";
 
 @Entity()
 export class TUser extends TSoftDeleteEntity {
@@ -91,6 +92,9 @@ export class TUser extends TSoftDeleteEntity {
 
     @Column({ type: 'tinyint', default: true })
     profilePublic?: boolean;
+
+    @ManyToMany(() => TRoom, (room) => room.users)
+    rooms!: TRoom[];
 
     @ManyToOne(() => TUser, { lazy: true, nullable: true })
     userCreator?: TUser;

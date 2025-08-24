@@ -21,6 +21,7 @@ export const useCreateDataSource = async (options: Partial<DataSourceOptions>, r
         useSetGlobalAppDataSource(AppDataSource)
         return AppDataSource
     } catch (e) {
+        console.log(e)
         console.error("Error during Data Source initialization", JSON.stringify(e))
     }
 }

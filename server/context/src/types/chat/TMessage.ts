@@ -4,6 +4,7 @@ import { TMediaType } from "./TMediaType";
 import { TMessageStatus } from "./TMessageStatus";
 import { TEntityUserCreator } from "../base/TEntityUserCreator";
 import { TUser } from "../base";
+import { TRoom } from "./TRoom";
 
 @Entity()
 export class TMessage extends TEntityUserCreator {
@@ -16,8 +17,8 @@ export class TMessage extends TEntityUserCreator {
   @JoinColumn()
   receiver?: TUser;
 
-  @Column({ type: 'varchar', nullable: true })
-  room?: string; // dm:<minId>:<maxId>
+  @ManyToOne(() => TRoom, (room) => room.messages, { lazy: true, nullable: true })
+  room?: TRoom;
 
   @Column({ type: 'varchar', nullable: true })
   content?: string;

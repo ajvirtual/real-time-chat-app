@@ -36,3 +36,29 @@ Features
 - Rate limiting (per-IP or per-conversation)
 - Virus scan or MIME whitelisting for uploads
 
+
+## 🛠 Installation
+
+Follow these steps to set up the project:
+
+1. **Clone the repository**:
+   ```bash
+
+
+## 🛠️ Running the Project
+
+### 1. Install dependencies (from project root)
+pnpm install
+pnpm run build
+
+### 2. Start the backend (Gateway Service)
+cd server/gateway-service
+pnpm run start:development
+
+### 3. Start the frontend (Client App)
+cd app/client
+pnpm run start:development
+
+    
+    
+- 

@@ -1,8 +1,13 @@
 import Aurora from "components/background/Aurora";
 import './css/client-layout.css';
 import ChatSupportContainer from "components/chat-support/container/ChatSupportContainer";
+import { UserPickerOverlay } from "components/chat-support/components/UserPickerOverlay";
+import { useUserId } from "components/chat-support/hooks/utils/useUserId";
 
 const ClientLayout = () => {
+
+    const { ids, setIds } = useUserId();
+
     return (
         <>
             <div className="client-layout">
@@ -15,8 +20,12 @@ const ClientLayout = () => {
                     />
                 </div>
 
+                <UserPickerOverlay
+                    open={!ids}
+                    onPick={(id, peerId) => setIds(id, peerId)}
+                />
                 <main className="main-wrapper">
-                    <ChatSupportContainer />
+                    <ChatSupportContainer userId={ids?.userId} peerId={ids?.peerId} />
                 </main>
             </div>
         </>

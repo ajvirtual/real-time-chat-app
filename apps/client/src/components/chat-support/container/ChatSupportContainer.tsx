@@ -10,24 +10,26 @@ import moment from 'moment';
 import '../main.css'
 
 export type Message = {
-    id: string;
+    id?: number;
     text?: string;
-    duration?: string;
     timestamp: string;
-    isFromUser: boolean;
+    userId?: number;
     file?: File;
     image?: string;
+    roomId?: number;
     isAttachment?: boolean;
     reaction?: string;
-    replyTo?: string;
+    replyTo?: number;
     edited?: boolean;
     removed?: boolean;
 };
-const ChatSupportContainer = () => {
+
+const ChatSupportContainer = (props: TChatProps) => {
     const [socket, setSocket] = useState<any>(null);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [roomId, setRoomId] = useState<number | null>(null);
     const [typing, setTyping] = useState(false);
-    const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+    const [activeMessageId, setActiveMessageId] = useState<number | null>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [currentMessageToEdit, setCurrentMessageToEdit] = useState<Message | null>(null);
     const [fullscreenImage, setFullScreenImage] = useState<File | null>(null);
@@ -35,7 +37,7 @@ const ChatSupportContainer = () => {
     useEffect(() => {
         const newSocket = io(`http://localhost:${process.env.SERVER_CHAT_PORT ?? 4000}`, {
             reconnectionDelayMax: 20000,
-            auth: { userId: 1 },
+            auth: { userId: props?.userId },
             query: {
                 "chat-key": "chat-support"
             },
@@ -47,13 +49,22 @@ const ChatSupportContainer = () => {
             console.log("WebSocket connected:", newSocket.id);
         });
 
+        newSocket.emit("getRoom", { userId: props?.userId, peerId: props?.peerId });
+
+        newSocket.on("room:id", (room: number) => {
+            setRoomId(room);
+        });
+
         newSocket.on("connect_error", (err) => {
             console.error("WebSocket connection error:", err.message);
         });
 
         newSocket.on("history", ({ messages }: any) => setMessages(messages));
-        newSocket.on("receive", (message: any) => setMessages((prev) => [...prev, message]));
+        newSocket.on("receive", (message: any) => {
+            setMessages((prev) => [...prev, message])
+        });
         newSocket.on("typing", ({ isTyping }: any) => setTyping(isTyping));
+        newSocket.on("stopTyping", ({ isTyping }: any) => setTyping(isTyping));
         newSocket.on("read", ({ messageIds }: any) => {
             setMessages((prev) =>
                 prev.map((msg) =>
@@ -79,7 +90,7 @@ const ChatSupportContainer = () => {
         });
 
         // Join the DM room
-        newSocket.emit("join:dm", { peerId: 2 });
+        newSocket.emit("join:dm", { peerId: props.peerId });
 
         setSocket(newSocket);
 
@@ -88,42 +99,42 @@ const ChatSupportContainer = () => {
             newSocket.disconnect();
             setSocket(null);
         };
-    }, []);
+    }, [props.userId, props.peerId]);
 
     const handleMessageSending = (message: Message) => {
         if (!socket) return;
 
-        socket.emit("stopTyping", { to: 2 });
+        socket.emit("stopTyping", { to: props?.peerId });
 
         const tempId = moment().format('YYYYMMDDHHmmss');
         if (currentMessageToEdit) {
             setMessages((prev) =>
-                prev.map((msg) => (msg.id === currentMessageToEdit.id ? { ...msg, ...message, edited: true } : msg))
+                prev.map((msg) => (msg.id === currentMessageToEdit.id ? { ...msg, roomId: roomId!, ...message, edited: true } : msg))
             );
             setCurrentMessageToEdit(null);
-            const payload = { tempId, peerId: 2, content: message }
-            console.log(payload)
+            const payload = { tempId: tempId, roomId: roomId, userId: props?.userId, content: message }
             socket.emit("send", payload);
             return;
         }
 
         setMessages((prev) => [
             ...prev,
-            {
+            {   
+                roomId: roomId!,
                 ...message,
                 replyTo: replyingTo?.id || undefined,
             }
         ]);
         setReplyingTo(null);
 
-        socket.emit("send", { tempId, peerId: 2, content: message });
+        socket.emit("send", { tempId, roomId: roomId, userId: props?.userId, content: message as Message });
     };
 
     const handleTyping = (isTyping: boolean) => {
         if (!socket) return;
 
         if (isTyping) {
-            socket.emit("typing", { peerId: 2 });
+            socket?.emit?.("typing", { roomId: roomId, userId: props?.userId });
             return;
         }
 
@@ -132,11 +143,11 @@ const ChatSupportContainer = () => {
         if (typingTimeout) clearTimeout(typingTimeout);
 
         typingTimeout = setTimeout(() => {
-            socket.emit("stopTyping", { to: 2 });
+            socket.emit("stopTyping", { to: props?.userId });
         }, TYPING_TIMEOUT);
     };
 
-    const handleDeleteMessage = (id: string) => {
+    const handleDeleteMessage = (id: number) => {
         setMessages((prev) =>
             prev.map((message) =>
                 message.id === id ? { ...message, removed: true } : message
@@ -144,21 +155,21 @@ const ChatSupportContainer = () => {
         );
     };
 
-    const handleEditMessage = (id: string) => {
+    const handleEditMessage = (id: number) => {
         const messageToEdit = messages.find((message) => message.id === id);
         if (messageToEdit && messageToEdit.text) {
             setCurrentMessageToEdit(messageToEdit);
         }
     };
 
-    const handleRespondToMessage = (id: string) => {
+    const handleRespondToMessage = (id: number) => {
         const messageToRespond = messages.find((message) => message.id === id);
         if (messageToRespond) {
             setReplyingTo(messageToRespond);
         }
     };
 
-    const removeReaction = (id: string) => {
+    const removeReaction = (id?: number) => {
         setMessages((prev) =>
             prev.map((message) =>
                 message.id === id ? { ...message, reaction: undefined } : message
@@ -166,7 +177,7 @@ const ChatSupportContainer = () => {
         );
     };
 
-    const bringToView = (id?: string) => {
+    const bringToView = (id?: number) => {
         const elementToReply = document?.querySelector(`#message-${id}`);
         if (elementToReply) {
             elementToReply.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -177,7 +188,7 @@ const ChatSupportContainer = () => {
         }
     };
 
-    const handleReactToMessage = (id?: string, reaction?: string) => {
+    const handleReactToMessage = (id?: number, reaction?: string) => {
         setMessages((prev) =>
             prev.map((message) =>
                 message.id === id ? { ...message, reaction: reaction || '' } : message
@@ -209,14 +220,14 @@ const ChatSupportContainer = () => {
                 </div>
 
                 {messages.map((message, index) => {
-                    const isConsecutive = index > 0 && messages[index - 1].isFromUser === message.isFromUser;
-                    const showAvatar = !isConsecutive && !message.isFromUser;
+                    const isConsecutive = index > 0 && messages[index - 1].userId === message.userId;
+                    const showAvatar = !isConsecutive && message.userId !== props?.userId;
                     const isEmoji = message.text && /^[\p{Emoji}]/u.test(message.text.trim());
-
+                    console.log(message, props)
                     return (
-                        <div key={message.id} className={`message-row ${message.isFromUser ? 'user' : 'other'} ${isConsecutive ? 'mt-[10px]' : 'mt-[18px]'}`}>
+                        <div key={message.id} className={`message-row ${message.userId === props?.userId ? 'user' : 'other'} ${isConsecutive ? 'mt-[10px]' : 'mt-[18px]'}`}>
                             <div className={`message-avatar ${!showAvatar && 'invisible'}`}>JA</div>
-                            <div className={`message-content ${message.isFromUser ? 'me' : 'other'}`}>
+                            <div className={`message-content ${message.userId === props?.userId ? 'me' : 'other'}`}>
                                 <div>
                                     {message.replyTo && (
                                         <div className="reply-preview" onClick={() => bringToView(message.replyTo)}>
@@ -231,7 +242,7 @@ const ChatSupportContainer = () => {
                                             <div className="main-text">This message has been removed.</div>
                                         </div>
                                     ) : (
-                                        <div id={`message-${message.id}`} className={`${isEmoji || message.file ? 'message-plain' : 'message-bubble'} ${message.isFromUser ? 'user' : 'other'}`}>
+                                        <div id={`message-${message.id}`} className={`${isEmoji || message.file ? 'message-plain' : 'message-bubble'} ${message.userId === props?.userId ? 'user' : 'other'}`}>
                                             {message.file && !message.isAttachment && (
                                                 <div className="image-container">
                                                     <img
@@ -252,7 +263,7 @@ const ChatSupportContainer = () => {
                                             {message.text && <MessageItem text={message.text} />}
                                             {message.reaction && (
                                                 <span
-                                                    className={`message-reaction ${message.isFromUser ? 'left-[-6px]' : 'right-[-6px]'}`}
+                                                    className={`message-reaction ${message.userId === props?.userId ? 'left-[-6px]' : 'right-[-6px]'}`}
                                                     onClick={() => removeReaction(message.id)}
                                                 >
                                                     {message.reaction}
@@ -260,16 +271,16 @@ const ChatSupportContainer = () => {
                                             )}
                                         </div>
                                     )}
-                                    <div className={`message-timestamp ${message.isFromUser ? 'user' : 'other'}`}>
+                                    <div className={`message-timestamp ${message.userId === props?.userId ? 'user' : 'other'}`}>
                                         {message.timestamp}
                                     </div>
                                 </div>
                                 {!message.removed && (
                                     <MessageOptions
                                         messageId={message.id}
-                                        isFromUser={message.isFromUser}
+                                        isFromUser={message.userId === props?.userId}
                                         activeMessageId={activeMessageId}
-                                        setActiveMessageId={setActiveMessageId}
+                                        setActiveMessageId={setActiveMessageId as any}
                                         onReact={handleReactToMessage}
                                         onRespond={handleRespondToMessage}
                                         onDelete={handleDeleteMessage}
@@ -286,15 +297,20 @@ const ChatSupportContainer = () => {
                 onMessageSend={handleMessageSending}
                 replyingTo={replyingTo}
                 onCancelReply={handleCancelReplay}
+                roomId={roomId!}
                 currentMessageToEdit={currentMessageToEdit}
                 onCancelEdit={handleCancelEdit}
                 onTyping={handleTyping}
+                userId={props.userId}
             />
         </div>
     );
 };
 
 export type TChatProps = {
+    userId?: number | null;
+    peerId?: number | null;
+    roomId?: number | null;
     onMessageSend?: (message: Message) => void
     replyingTo?: Message | null;
     onCancelReply?: () => void;
@@ -304,7 +320,3 @@ export type TChatProps = {
 };
 
 export default ChatSupportContainer;
-
-// export const ChatSupportContainerOld = () => {
-//     return <></>
-// }
