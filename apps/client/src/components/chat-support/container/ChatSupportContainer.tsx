@@ -272,7 +272,7 @@ const ChatSupportContainer = (props: TChatProps) => {
                                         </div>
                                     )}
                                     <div className={`message-timestamp ${message.userId === props?.userId ? 'user' : 'other'}`}>
-                                        {message.timestamp}
+                                        {moment(message.timestamp).format('hh:mm')}
                                     </div>
                                 </div>
                                 {!message.removed && (

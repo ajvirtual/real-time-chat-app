@@ -33,7 +33,7 @@ export const InputArea = (props: TChatProps) => {
             if (inputText.trim()) {
                 const newMessage: Message = {
                     text: inputText,
-                    timestamp: moment().format('hh:mm A'),
+                    timestamp: moment().toLocaleString(),
                     userId: props.userId!,
                     roomId: props.roomId!,
                     replyTo: props.replyingTo?.id,
@@ -77,7 +77,7 @@ export const InputArea = (props: TChatProps) => {
                 text: "",
                 file: file,
                 isAttachment: true,
-                timestamp: Date.now().toString(),
+                timestamp: moment().toLocaleString(),
                 roomId: props.roomId!,
                 userId: props.userId!,
                 replyTo: props.replyingTo?.id,
@@ -98,7 +98,7 @@ export const InputArea = (props: TChatProps) => {
                 text: "",
                 image: URL.createObjectURL(file),
                 file: file,
-                timestamp: Date.now().toString(),
+                timestamp: moment().toLocaleString(),
                 userId: props.userId!,
                 replyTo: props.replyingTo?.id,
             };

@@ -143,7 +143,7 @@ export function attachSocket(server: http.Server) {
             socket.on("read", async ({ peerId, messageIds }: { peerId: number; messageIds: number[] }) => {
                 const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
                 try {
-                    await messageRepository.update(messageIds, { readAt: Date.now(), status: TMessageStatus.READ });
+                    await messageRepository.update(messageIds, { readAt: moment().toLocaleString(), status: TMessageStatus.READ });
                     socket.to(room).emit("read", { room, messageIds, by: userId });
                 } catch (error) {
                     console.error("Error marking messages as read:", error);
