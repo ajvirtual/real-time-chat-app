@@ -35,6 +35,7 @@ const ChatSupportContainer = (props: TChatProps) => {
     const [currentMessageToEdit, setCurrentMessageToEdit] = useState<Message | null>(null);
     const [fullscreenImage, setFullScreenImage] = useState<File | null>(null);
     const bottomRef = useRef<HTMLDivElement | null>(null);
+    const hasScrolledToBottomRef = useRef<boolean>(false);
 
     useEffect(() => {
         const newSocket = io(`http://localhost:${process.env.SERVER_CHAT_PORT ?? 4000}`, {
@@ -111,8 +112,11 @@ const ChatSupportContainer = (props: TChatProps) => {
     }, [props.userId, props.peerId]);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+        if(!hasScrolledToBottomRef.current && messages.length > 0) {
+            bottomRef.current?.scrollIntoView({ behavior: "auto" });
+            hasScrolledToBottomRef.current = true;
+        }
+    }, [messages, hasScrolledToBottomRef]);
 
     const handleMessageSending = (message: Message) => {
         if (!socket) return;
