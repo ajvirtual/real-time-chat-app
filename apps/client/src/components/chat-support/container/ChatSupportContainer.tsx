@@ -6,9 +6,10 @@ import MessageOptions from '../components/MessageOption';
 import { Paperclip } from 'lucide-react';
 import { ImageViewer } from '../components/ImageViewer';
 import { MessageItem } from '../components/MessageItem';
-import moment from 'moment';
 import '../main.css'
+import moment from 'moment'
 import { TypingIndicator } from '../components/TypingIndicator';
+import { MessageState, ReceiptState } from '../components/ReceiptState';
 
 export type Message = {
     id?: number;
@@ -20,6 +21,7 @@ export type Message = {
     roomId?: number;
     isAttachment?: boolean;
     reaction?: string;
+    status?: string;
     replyTo?: number;
     edited?: boolean;
     removed?: boolean;
@@ -87,11 +89,23 @@ const ChatSupportContainer = (props: TChatProps) => {
             const allTypingIndicator = userId !== props?.userId;
             setTyping(allTypingIndicator && isTyping);
         });
-        newSocket.on("read", ({ messageIds }: any) => {
+
+        newSocket.on("ack", ({ tempId, id, createdAt }: any) => {
             setMessages((prev) =>
                 prev.map((msg) =>
-                    messageIds.includes(msg.id) ? { ...msg, read: true } : msg
+                    msg.timestamp === tempId ? { ...msg, id, timestamp: createdAt, status: 'SENT' } : msg
                 )
+            );
+        })
+
+        newSocket.on("read", ({ messageIds }: any) => {
+            setMessages((prev) =>
+                prev.map((msg) => {
+                    if(messageIds.includes(msg.id)) {
+                        return { ...msg, status: 'SEEN', read: true } 
+                    }
+                    return msg
+                })
             );
         });
 
@@ -134,7 +148,19 @@ const ChatSupportContainer = (props: TChatProps) => {
             bottomRef.current?.scrollIntoView({ behavior: "auto" });
             hasScrolledToBottomRef.current = true;
         }
-    }, [messages, hasScrolledToBottomRef]);
+
+        const unreadMessages = messages.filter(message => ( message.userId !== props?.userId ) && message.status !== 'SEEN')
+
+        if (unreadMessages.length > 0) {
+            const unreadMessageIds = unreadMessages.map(message => message.id).filter(Boolean) as number[];
+            socket.emit("read", { messageIds: unreadMessageIds, peerId: props?.peerId });
+            setMessages(prev => 
+                prev.map(msg =>
+                    unreadMessageIds?.includes(msg.id!) ? { ...msg, status: 'SEEN', read: true } : msg
+                )
+            );
+        }
+    }, [messages, hasScrolledToBottomRef, setMessages]);
 
     const notifyOnlineStatus = (socket: any) => {
         socket.emit("user:online", { userId: props.userId, peerId: props.peerId });
@@ -161,6 +187,7 @@ const ChatSupportContainer = (props: TChatProps) => {
             {   
                 roomId: roomId!,
                 ...message,
+                status: 'SENDING',
                 replyTo: replyingTo?.id || undefined,
             }
         ]);
@@ -256,11 +283,12 @@ const ChatSupportContainer = (props: TChatProps) => {
                     const isConsecutive = index > 0 && messages[index - 1].userId === message.userId;
                     const showAvatar = !isConsecutive && message.userId !== props?.userId;
                     const isEmoji = message.text && /^[\p{Emoji}]/u.test(message.text.trim());
+                    const isMe = message.userId === props?.userId
 
                     return (
-                        <div key={message.id} className={`message-row ${message.userId === props?.userId ? 'user' : 'other'} ${isConsecutive ? 'mt-[10px]' : 'mt-[18px]'}`}>
+                        <div key={message.id} className={`message-row ${isMe ? 'user' : 'other'} ${isConsecutive ? 'mt-[10px]' : 'mt-[18px]'}`}>
                             <div className={`message-avatar ${!showAvatar && 'invisible'}`}>JA</div>
-                            <div className={`message-content ${message.userId === props?.userId ? 'me' : 'other'}`}>
+                            <div className={`message-content ${isMe ? 'me' : 'other'}`}>
                                 <div>
                                     {message.replyTo && (
                                         <div className="reply-preview" onClick={() => bringToView(message.replyTo)}>
@@ -296,7 +324,7 @@ const ChatSupportContainer = (props: TChatProps) => {
                                             {message.text && <MessageItem text={message.text} />}
                                             {message.reaction && (
                                                 <span
-                                                    className={`message-reaction ${message.userId === props?.userId ? 'left-[-6px]' : 'right-[-6px]'}`}
+                                                    className={`message-reaction ${isMe ? 'left-[-6px]' : 'right-[-6px]'}`}
                                                     onClick={() => removeReaction(message.id)}
                                                 >
                                                     {message.reaction}
@@ -304,8 +332,9 @@ const ChatSupportContainer = (props: TChatProps) => {
                                             )}
                                         </div>
                                     )}
-                                    <div className={`message-timestamp ${message.userId === props?.userId ? 'user' : 'other'}`}>
+                                    <div className={`message-timestamp ${isMe ? 'user' : 'other'}`}>
                                         {moment(message.timestamp).format('hh:mm')}
+                                        { isMe && <ReceiptState status={message.status as MessageState ?? 'SENT'} /> }
                                     </div>
                                 </div>
                                 {!message.removed && (

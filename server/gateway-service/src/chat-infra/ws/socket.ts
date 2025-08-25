@@ -5,6 +5,7 @@ import { redis, redisSub, keys } from "../caching/Redis";
 import { TUser, TMessage, useGlobalAppDataSource, TMediaType, TMessageStatus, TRoom, TFile } from "@chat/context";
 import moment from "moment";
 import { v4 as uuidv4 } from 'uuid';
+import _ from "lodash";
 
 export type Message = {
     id?: number;
@@ -128,11 +129,13 @@ export function attachSocket(server: http.Server) {
                     await messageRepository.update(existingMessage.id, {
                         parentMessage: parentMessage,
                         content: content.text,
+                        status: content.status ?? TMessageStatus.SENT,
                         reaction: content.reaction
                     });
 
                     content_ = {
                         ...content,
+                        status: content.status ?? TMessageStatus.SENT,
                         id: existingMessage.id,
                         edited: content.text !== existingMessage.content
                     };
@@ -177,14 +180,20 @@ export function attachSocket(server: http.Server) {
                         content: content?.text,
                         reaction: content?.reaction,
                         contentType: content?.file ? TMediaType.FILE : TMediaType.TEXT,
-                        status: TMessageStatus.DELIVERED,
+                        // status: TMessageStatus.DELIVERED,
+                        status: content.status ?? TMessageStatus.SENT,
                         sender,
                         receiver,
                         media,
                         parentMessage
                     });
                     const saved = await messageRepository.save(msg);
-                    content_ = { ...content, id: saved.id, edited: false };
+                    content_ = {
+                        ...content,
+                        id: saved.id,
+                        status: content.status ?? TMessageStatus.SENT,
+                        edited: false
+                    };
                     // Ack to sender
                     socket.emit("ack", { tempId, id: saved.id, createdAt: saved.createdAt });
 
@@ -194,7 +203,7 @@ export function attachSocket(server: http.Server) {
                     // Update Redis recent messages
                     await redis.zadd(keys.recent(room.id.toString()), Date.now(), json);
                     await redis.zremrangebyrank(keys.recent(room.id.toString()), 0, -101);
-
+                    console.log(content_)
                     // Emit to other room members
                     socket.to(room.id.toString()).emit("receive", content_);
                 }
@@ -202,12 +211,15 @@ export function attachSocket(server: http.Server) {
 
 
             socket.on("read", async ({ peerId, messageIds }: { peerId: number; messageIds: number[] }) => {
+                console.log(peerId, messageIds)
                 const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
-                try {
-                    await messageRepository.update(messageIds, { readAt: moment().toLocaleString(), status: TMessageStatus.READ });
-                    socket.to(room.id.toString()).emit("read", { room, messageIds, by: userId });
-                } catch (error) {
-                    console.error("Error marking messages as read:", error);
+                if(!_.isEmpty(messageIds)) {
+                    try {
+                        await messageRepository.update(messageIds, { readAt: moment().toLocaleString(), status: TMessageStatus.SEEN });
+                        socket.to(room?.id?.toString()).emit("read", { room, messageIds, by: userId });
+                    } catch (error) {
+                        console.error("Error marking messages as read:", error);
+                    }
                 }
             });
 
@@ -215,7 +227,7 @@ export function attachSocket(server: http.Server) {
                 await redis.set(keys.presence(userId), "online");
                 const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
                 const user = await userRepository?.findOne({ where: { id: userId } });
-                socket.to(room.id.toString()).emit("user:online", { userId, userName: user?.fullName });
+                socket.to(room?.id?.toString()).emit("user:online", { userId, userName: user?.fullName });
             });
 
             socket.on("user:active", async ({ roomId, userId, peerId }) => {
@@ -224,7 +236,7 @@ export function attachSocket(server: http.Server) {
 
                 const peerKey = keys.active(peerId);
                 const peerOnline = await redis.get(peerKey);
-                socket.to(roomId.toString()).emit("peer:active", { online: !!peerOnline });
+                socket.to(roomId?.toString()).emit("peer:active", { online: !!peerOnline });
             });
 
             socket.on("disconnect", async () => {

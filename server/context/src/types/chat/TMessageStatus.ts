@@ -1,6 +1,7 @@
 
 export enum TMessageStatus {
-  PENDING = "pending",
-  DELIVERED = "delivered",
-  READ = "read",
+  SENT = "SENT",
+  PENDING = "PENDING",
+  DELIVERED = "DELIVERED",
+  SEEN = "SEEN",
 }
