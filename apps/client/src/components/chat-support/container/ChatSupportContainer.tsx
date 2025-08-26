@@ -10,6 +10,7 @@ import '../main.css'
 import moment from 'moment'
 import { TypingIndicator } from '../components/TypingIndicator';
 import { MessageState, ReceiptState } from '../components/ReceiptState';
+import _ from 'lodash';
 
 export type Message = {
     id?: number;
@@ -90,13 +91,27 @@ const ChatSupportContainer = (props: TChatProps) => {
             setTyping(allTypingIndicator && isTyping);
         });
 
-        newSocket.on("ack", ({ tempId, id, createdAt }: any) => {
+        newSocket.on("ack", ({ tempId, id, createdAt, content }: any) => {
             setMessages((prev) =>
-                prev.map((msg) =>
-                    msg.timestamp === tempId ? { ...msg, id, timestamp: createdAt, status: 'SENT' } : msg
-                )
+                prev.map((msg) => {
+                    if(createdAt) {
+                        return msg.timestamp === tempId ? { ...msg, id, timestamp: createdAt, status: msg.reaction === 'SENDING' ? 'SENT' : msg?.reaction } : msg
+                    }
+                    return msg.id === id ? { ...msg, id } : msg
+                })
             );
         })
+
+        newSocket.on("message:removed", ({ id, by }) => {
+            // Find the message in state (messages list)
+            setMessages(prev =>
+                prev.map(m =>
+                m.id === id
+                    ? { ...m, removed: true } // mark as removed
+                    : m
+                )
+            );
+        });
 
         newSocket.on("read", ({ messageIds }: any) => {
             setMessages((prev) =>
@@ -119,6 +134,9 @@ const ChatSupportContainer = (props: TChatProps) => {
 
         newSocket.on("error", (error: any) => {
             console.error(error);
+            setMessages((prev) =>
+                prev.map((msg) => msg.status === 'SENDING' ? { ...msg, status: 'FAILED' } : msg )
+            );
         });
 
         newSocket.on("reconnect_error", (error: any) => {
@@ -165,6 +183,7 @@ const ChatSupportContainer = (props: TChatProps) => {
     const notifyOnlineStatus = (socket: any) => {
         socket.emit("user:online", { userId: props.userId, peerId: props.peerId });
     }
+    console.log(messages)
 
     const handleMessageSending = (message: Message) => {
         if (!socket) return;
@@ -176,9 +195,9 @@ const ChatSupportContainer = (props: TChatProps) => {
             setMessages((prev) =>
                 prev.map((msg) => (msg.id === currentMessageToEdit.id ? { ...msg, roomId: roomId!, ...message, edited: true } : msg))
             );
-            setCurrentMessageToEdit(null);
-            const payload = { tempId: tempId, roomId: roomId, userId: props?.userId, content: message }
+            const payload = { tempId: tempId, roomId: roomId, userId: props?.userId, content: {...message, id: currentMessageToEdit.id} }
             socket.emit("send", payload);
+            setCurrentMessageToEdit(null);
             return;
         }
 
@@ -207,6 +226,8 @@ const ChatSupportContainer = (props: TChatProps) => {
                 message.id === id ? { ...message, removed: true } : message
             )
         );
+        const message = messages.find((msg) => msg.id === id);
+        socket.emit("send", { tempId: message?.timestamp, roomId: roomId, userId: props?.userId, content: {...message, removed: true} });
     };
 
     const handleEditMessage = (id: number) => {
@@ -226,11 +247,11 @@ const ChatSupportContainer = (props: TChatProps) => {
     const removeReaction = (id?: number) => {
         setMessages((prev) =>
             prev.map((message) =>
-                message.id === id ? { ...message, reaction: undefined } : message
+                message.id === id ? { ...message, reaction: '' } : message
             )
         );
         const message = messages.find((msg) => msg.id === id);
-        socket.emit("send", { tempId: message?.timestamp, roomId: roomId, userId: props?.userId, content: {...message, reaction: undefined} });
+        socket.emit("send", { tempId: message?.timestamp, roomId: roomId, userId: props?.userId, content: {...message, reaction: ''} });
     };
 
     const bringToView = (id?: number) => {
@@ -259,7 +280,7 @@ const ChatSupportContainer = (props: TChatProps) => {
     const handleCancelReplay = () => {
         setReplyingTo(null);
     };
-
+    console.log(socket)
     const handleCancelEdit = () => {
         setCurrentMessageToEdit(null);
     };
@@ -283,12 +304,12 @@ const ChatSupportContainer = (props: TChatProps) => {
                     const isConsecutive = index > 0 && messages[index - 1].userId === message.userId;
                     const showAvatar = !isConsecutive && message.userId !== props?.userId;
                     const isEmoji = message.text && /^[\p{Emoji}]/u.test(message.text.trim());
-                    const isMe = message.userId === props?.userId
+                    const myMessage = message.userId === props?.userId
 
                     return (
-                        <div key={message.id} className={`message-row ${isMe ? 'user' : 'other'} ${isConsecutive ? 'mt-[10px]' : 'mt-[18px]'}`}>
+                        <div key={message.id} className={`message-row ${myMessage ? 'user' : 'other'} ${isConsecutive ? 'mt-[10px]' : 'mt-[18px]'}`}>
                             <div className={`message-avatar ${!showAvatar && 'invisible'}`}>JA</div>
-                            <div className={`message-content ${isMe ? 'me' : 'other'}`}>
+                            <div className={`message-content ${myMessage ? 'me' : 'other'}`}>
                                 <div>
                                     {message.replyTo && (
                                         <div className="reply-preview" onClick={() => bringToView(message.replyTo)}>
@@ -303,20 +324,20 @@ const ChatSupportContainer = (props: TChatProps) => {
                                             <div className="main-text">This message has been removed.</div>
                                         </div>
                                     ) : (
-                                        <div id={`message-${message.id}`} className={`${isEmoji || message.file ? 'message-plain' : 'message-bubble'} ${message.userId === props?.userId ? 'user' : 'other'}`}>
-                                            {message.file && !message.isAttachment && (
+                                        <div id={`message-${message.id}`} className={`${isEmoji || !_.isEmpty(message?.file) ? 'message-plain' : 'message-bubble'} ${myMessage ? 'user' : 'other'}`}>
+                                            {message?.file && !message.isAttachment && (
                                                 <div className="image-container">
                                                     <img
-                                                        src={URL.createObjectURL(message.file)}
+                                                        src={!_.isEmpty(message.file) ? URL.createObjectURL(message?.file!) : ''}
                                                         alt="Uploaded"
-                                                        onClick={() => openImage(message.file)}
+                                                        onClick={() => openImage(message?.file!)}
                                                         className="message-image cursor-pointer"
                                                     />
                                                 </div>
                                             )}
-                                            {message.file && message.isAttachment && (
+                                            {message?.file && message?.isAttachment && (
                                                 <div className="attachment-container">
-                                                    <a href={URL.createObjectURL(message.file)} download={message.file.name} className="attachment-link">
+                                                    <a href={!_.isEmpty(message.file) ? URL.createObjectURL(message?.file!) : ''} download={message?.file?.name} className="attachment-link">
                                                         <Paperclip width={17} height={17} /> <span>{message.file.name}</span>
                                                     </a>
                                                 </div>
@@ -324,17 +345,17 @@ const ChatSupportContainer = (props: TChatProps) => {
                                             {message.text && <MessageItem text={message.text} />}
                                             {message.reaction && (
                                                 <span
-                                                    className={`message-reaction ${isMe ? 'left-[-6px]' : 'right-[-6px]'}`}
-                                                    onClick={() => removeReaction(message.id)}
+                                                    className={`message-reaction ${myMessage ? 'left-[-6px]' : 'right-[-6px] cursor-default'}`}
+                                                    onClick={() => myMessage ? removeReaction(message.id) : undefined}
                                                 >
                                                     {message.reaction}
                                                 </span>
                                             )}
                                         </div>
                                     )}
-                                    <div className={`message-timestamp ${isMe ? 'user' : 'other'}`}>
+                                    <div className={`message-timestamp ${myMessage ? 'user' : 'other'}`}>
                                         {moment(message.timestamp).format('hh:mm')}
-                                        { isMe && <ReceiptState status={message.status as MessageState ?? 'SENT'} /> }
+                                        { myMessage && <ReceiptState status={message.status as MessageState ?? 'SENT'} /> }
                                     </div>
                                 </div>
                                 {!message.removed && (

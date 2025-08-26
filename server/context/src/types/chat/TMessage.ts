@@ -41,6 +41,9 @@ export class TMessage extends TEntityUserCreator {
   @Column({ type: "datetime", nullable: true })
   readAt?: string;
 
+  @Column({ type: "datetime", nullable: true })
+  editedAt?: string;
+
   @ManyToOne(() => TMessage, { lazy: true, nullable: true })
   parentMessage?: TMessage;
 }
