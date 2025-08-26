@@ -51,13 +51,15 @@ export function attachSocket(server: http.Server) {
             await redis.set(keys.presence(userId), "online");
 
             socket.on("join:dm", async ({ peerId }: { peerId: number }) => {
-                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
+                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!, userRepository!);
                 socket.join(room.id.toString()); // Use DB id as socket room key
 
                 const cached = await redis.zrevrange(keys.recent(room.id.toString()), 0, 49);
-                console.log('cached', cached)
                 if (cached.length) {
                     const msgs = cached.reverse().map((j) => JSON.parse(j));
+                    console.log('msg////////begin')
+                    console.log(msgs)
+                    console.log('msg////////END')
                     socket.emit("history", { room: room.id, messages: msgs });
                 } else {
                     const messages = await messageRepository.find({
@@ -66,13 +68,31 @@ export function attachSocket(server: http.Server) {
                         order: { createdAt: "ASC" },
                         take: 50,
                     });
-
-                    socket.emit("history", { room: room.id, messages });
+                    const msgs = await Promise.all(
+                        messages?.map(async (message) => {
+                            return {
+                                id: message.id,
+                                text: message?.content,
+                                timestamp: message?.createdAt,
+                                userId: (await message?.sender)?.id,
+                                file: !_.isEmpty(message?.media) ? message?.media : null,
+                                image: !_.isEmpty(message?.media) ? message?.media : null,
+                                roomId: room?.id,
+                                isAttachment: !_.isEmpty(message?.media),
+                                reaction: message.reaction,
+                                status: message.status,
+                                replyTo: (await message?.parentMessage)?.id,
+                                edited: !!message?.editedAt,
+                                removed: !!message?.deletedAt
+                            }
+                        }) || []
+                        );
+                    socket.emit("history", { room: room.id, messages: msgs });
                 }
             });
 
             socket.on("joinRoom", async ({ userId, peerId }) => {
-                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
+                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!, userRepository!);
                 socket.data.roomId = room?.id;
                 socket.data.userId = userId;
 
@@ -80,7 +100,7 @@ export function attachSocket(server: http.Server) {
             });
 
             socket.on("getRoom", async ({ userId, peerId }) => {
-                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
+                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!, userRepository!);
                 socket.emit("room:id", room.id);
             });
 
@@ -105,127 +125,261 @@ export function attachSocket(server: http.Server) {
             });
 
             socket.on("send", async ({ tempId, roomId, userId, content }) => {
-                const room = await roomRepository.findOne({
-                    where: { id: roomId },
-                    relations: ["users"]
-                });
-                if (!room) return;
-
-                const sender = await TUser.findOneByOrFail({ id: userId });
-                const receiver = room.users?.find((u) => u.id !== userId);
-                const parentMessage = content?.replyTo
-                    ? await messageRepository.findOneBy({ id: Number(content.replyTo) })
-                    : undefined;
-
-                let media = null;
-                // TODO: handle file upload & save in TFile repository if needed
-
-                let content_;
-                console.log('id : ', content?.id)
-                const existingMessage = content?.id ? await messageRepository.findOneBy({ id: content?.id }) : null;
-                console.log('existingMessage', existingMessage)
-                if (existingMessage) {
-                    
-                    await messageRepository.update(existingMessage.id, {
-                        parentMessage: parentMessage,
-                        content: content.text,
-                        status: content.status ?? TMessageStatus.SENT,
-                        reaction: content.reaction
+                try {
+                    const room = await roomRepository.findOne({
+                        where: { id: roomId },
+                        relations: ["users"]
                     });
-
-                    content_ = {
-                        ...content,
-                        status: content.status ?? TMessageStatus.SENT,
-                        id: existingMessage.id,
-                        edited: content.text !== existingMessage.content
-                    };
-
-                    const json = JSON.stringify(content_);
-
-                    // Remove existing message with the same id
-                    const key = keys.recent(room.id.toString());
-                    redis.get("mykey").then((result) => {
-                        console.log('list of mykey')
-                        console.log(result); // Prints "value"
-                    });
-                    /// KEY
-                    const existingMessages = await redis.zrange(key, 0, -1);
-                    console.log('existingMessage cached ', existingMessages)
-                    let prevScore = null;
-                    for (const msg of existingMessages) {
-                        const parsed = JSON.parse(msg);
-                        // console.log('parsed', parsed)
-                        if (parsed.id === existingMessage.id) {
-                            // console.log('found existing message in cache', parsed)
-                            prevScore = await redis.zscore(key, msg);
-                            // console.log('prevScore', prevScore)
-                            await redis.zrem(key, msg);
-                            break;
-                        }
+                    if (!room) {
+                        socket.emit("error", { tempId, message: "Room not found" });
+                        return;
                     }
 
-                    socket.emit("ack", { tempId, id: existingMessage.id, updatedAt: moment().toLocaleString() });
+                    const sender = await userRepository!.findOneByOrFail({ id: userId });
+                    const receiver = room.users?.find((u) => u.id !== userId);
+                    const parentMessage = content?.replyTo ? await messageRepository.findOneBy({ id: Number(content.replyTo) }) : undefined;
+                    let contentType = TMediaType.TEXT;
+                    if(!!content?.image) {
+                        contentType = TMediaType.IMAGE
+                    } 
+                    if(!!content?.file && content?.isAttachment) {
+                        contentType = TMediaType.FILE
+                    }
 
-                    // Add the new/updated message
-                    await redis.zadd(key, prevScore, json);
+                    let media = content?.file;
+                    // TODO: handle file upload & save in TFile repository if needed
 
-                    // Keep only the latest 100 messages
-                    await redis.zremrangebyrank(key, 0, -101);
-                    // Emit to other room members
-                    socket.to(room.id.toString()).emit("receive", content_);
-                } else {
-                    // CREATE new message
-                    const msg = messageRepository.create({
-                        room,
-                        content: content?.text,
-                        reaction: content?.reaction,
-                        contentType: content?.file ? TMediaType.FILE : TMediaType.TEXT,
-                        // status: TMessageStatus.DELIVERED,
-                        status: content.status ?? TMessageStatus.SENT,
-                        sender,
-                        receiver,
-                        media,
-                        parentMessage
+                    let content_;
+                    console.log('REMOVE MESSAGE')
+                    console.log(content.id)
+                    // Check if this is an edit (existing message with ID)
+                    console.log('TO REMOVE')
+                    console.log(content)
+                    if (content?.removed) {
+                        console.log('about to remove')
+                        try {
+                            // 1. Update database
+                            await messageRepository.update(content?.id, {
+                                removed: true,
+                                updatedAt: new Date(), // manually bump since @UpdateDateColumn no longer has onUpdate
+                            });
+
+                            // 2. Update cache
+                            const cacheKey = `message:${content?.id}`;
+                            const cached = await redis.get(cacheKey);
+
+                            if (cached) {
+                                const parsed = JSON.parse(cached);
+                                parsed.removed = true;
+                                parsed.updatedAt = new Date().toISOString();
+
+                                await redis.set(cacheKey, JSON.stringify(parsed));
+                            }
+
+                            // 3. Emit socket event so peers know about removal
+                            socket.to(room.id.toString()).emit("message:removed", {
+                                id: content?.id,
+                                by: userId,
+                            });
+
+                            return; // exit after handling removal
+                        } catch (error) {
+                            console.error("Error removing message:", error);
+                        }
+                        return;
+                    }
+                    const existingMessage = content?.id ? await messageRepository.findOneBy({ id: content.id }) : null;
+                    console.log(existingMessage)
+                    if (existingMessage) {
+                        // EDIT MESSAGE
+                        console.log('///////////////////// EDIT MESSAGE /////////////////////');
+                        
+                        let updateData: any = {
+                            parentMessage: parentMessage,
+                        };
+
+                        if(content?.replyTo) {
+                            updateData.parentMessage = await messageRepository.findOneBy({ id: content?.replyTo })
+                        }
+                        if (!!content.status) {
+                            updateData.status = content?.status;
+                        }
+                        if (!!content.reaction || content.reaction === '') {
+                            updateData.reaction = content?.reaction;
+                        }
+                        if (content.removed) {
+                            updateData.deletedAt = moment().toLocaleString();
+                        }
+                        if (content?.text !== existingMessage.content) {
+                            updateData.content = content?.text
+                            updateData.editedAt = moment().toLocaleString();
+                        }
+                        if (content?.file) {
+                            updateData.media = content?.file
+                        }
+                        if (!!contentType) {
+                            updateData.contentType = contentType
+                        }
+
+                        console.log('updateData', updateData)
+                        console.log('existingMessage', existingMessage.id)
+
+                        const updated = await messageRepository.update(existingMessage.id, updateData);
+                        console.log('updated__', updated)
+                        console.log('updated', updated[0])
+
+                        const updatedMessage = await messageRepository.find({
+                            where: { id: existingMessage.id },
+                            relations: ["sender", "receiver", "media", "parentMessage"],
+                        });
+                        const updatedMessage_ = updatedMessage[0]
+
+                        console.log('updated message : ', updatedMessage[0])
+                        content_ = {
+                            id: updatedMessage_.id,
+                            text: updatedMessage_.content,
+                            timestamp: updatedMessage_.createdAt,
+                            userId: (await updatedMessage_?.sender)?.id,
+                            file: !_.isEmpty(updatedMessage_?.media) ? updatedMessage_?.media : null,
+                            image: !_.isEmpty(updatedMessage_?.media) ? updatedMessage_?.media : null,
+                            roomId: room?.id,
+                            isAttachment: !_.isEmpty(updatedMessage_?.media),
+                            reaction: updatedMessage_?.reaction,
+                            status: updatedMessage_?.status,
+                            replyTo: (await updatedMessage_?.parentMessage)?.id,
+                            edited: !!updatedMessage_?.editedAt,
+                            removed: !!updatedMessage_?.deletedAt
+                        };
+
+                        // Update Redis cache
+                        const key = keys.recent(room.id.toString());
+                        const json = JSON.stringify(content_);
+                        console.log('content__edited_from_client', content_)
+                        
+                        const existingMessages = await redis.zrange(key, 0, -1);
+                        let prevScore = null;
+                        
+                        for (const msg of existingMessages) {
+                            try {
+                                const parsed = JSON.parse(msg);
+                                if (parsed.id === existingMessage.id) {
+                                    prevScore = await redis.zscore(key, msg);
+                                    await redis.zrem(key, msg);
+                                    break;
+                                }
+                            } catch (parseError) {
+                                console.error('Error parsing cached message:', parseError);
+                            }
+                        }
+
+                        // Use original score or current timestamp
+                        const score = prevScore !== null ? prevScore : Date.now();
+                        await redis.zadd(key, score, json);
+                        await redis.zremrangebyrank(key, 0, -101);
+
+                        // Send acknowledgment to sender
+                        socket.emit("ack", { tempId, id: existingMessage.id, content: content_ });
+
+                        // Emit to other room members
+                        socket.to(room.id.toString()).emit("receive", content_);
+
+                    } else {
+
+                        // CREATE new message
+                        const msg = messageRepository.create({
+                            sender,
+                            receiver,
+                            room,
+                            content: content?.text,
+                            reaction: content?.reaction,
+                            media,
+                            contentType,
+                            status: content?.status || TMessageStatus.SENT,
+                            parentMessage
+                        });
+                        
+                        const saved = await messageRepository.save(msg);
+                        console.log('saved : ', saved)
+                        content_ = {
+                            id: saved.id,
+                            text: saved.content,
+                            timestamp: saved.createdAt,
+                            userId: (await saved?.sender)?.id,
+                            file: !_.isEmpty(saved?.media) ? saved?.media : null,
+                            image: !_.isEmpty(saved?.media) ? saved?.media : null,
+                            roomId: room?.id,
+                            isAttachment: !_.isEmpty(saved?.media),
+                            reaction: saved?.reaction,
+                            status: saved?.status,
+                            replyTo: (await saved?.parentMessage)?.id,
+                        };
+                        console.log('content_', content_)
+
+                        // Send acknowledgment to sender
+                        socket.emit("ack", { 
+                            tempId, 
+                            id: saved.id, 
+                            createdAt: saved.createdAt,
+                            status: saved.status
+                        });
+
+                        // Update Redis recent messages
+                        const json = JSON.stringify(content_);
+                        console.log("///// MESSAGE SENT //////");
+                        console.log(json);
+                        
+                        await redis.zadd(keys.recent(room.id.toString()), Date.now(), json);
+                        await redis.zremrangebyrank(keys.recent(room.id.toString()), 0, -101);
+
+                        // Emit to other room members
+                        socket.to(room.id.toString()).emit("receive", content_);
+                    }
+
+                } catch (error) {
+                    console.error('Error handling send message:', error);
+                    socket.emit("error", { 
+                        tempId, 
+                        message: "Failed to send message",
+                        error: error.message 
                     });
-                    const saved = await messageRepository.save(msg);
-                    content_ = {
-                        ...content,
-                        id: saved.id,
-                        status: content.status ?? TMessageStatus.SENT,
-                        edited: false
-                    };
-                    // Ack to sender
-                    socket.emit("ack", { tempId, id: saved.id, createdAt: saved.createdAt });
-
-                    const json = JSON.stringify(content_);
-                    console.log("///// MESSAGE SENT //////");
-                    console.log(json);
-                    // Update Redis recent messages
-                    await redis.zadd(keys.recent(room.id.toString()), Date.now(), json);
-                    await redis.zremrangebyrank(keys.recent(room.id.toString()), 0, -101);
-                    console.log(content_)
-                    // Emit to other room members
-                    socket.to(room.id.toString()).emit("receive", content_);
                 }
             });
 
-
             socket.on("read", async ({ peerId, messageIds }: { peerId: number; messageIds: number[] }) => {
-                console.log(peerId, messageIds)
-                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
-                if(!_.isEmpty(messageIds)) {
+                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!, userRepository!);
+                if (!_.isEmpty(messageIds)) {
                     try {
-                        await messageRepository.update(messageIds, { readAt: moment().toLocaleString(), status: TMessageStatus.SEEN });
-                        socket.to(room?.id?.toString()).emit("read", { room, messageIds, by: userId });
+                        const now = moment().toLocaleString();
+                        await messageRepository.update(messageIds, { readAt: now, status: TMessageStatus.SEEN });
+
+                        const key = keys.recent(room.id.toString());
+                        const cachedMessages = await redis.zrange(key, 0, -1);
+
+                        for (const cached of cachedMessages) {
+                            const parsed = JSON.parse(cached);
+
+                            if (messageIds.includes(parsed.id)) {
+                                await redis.zrem(key, cached);
+
+                                parsed.readAt = now;
+                                parsed.status = TMessageStatus.SEEN;
+
+                                const score = Date.parse(parsed.createdAt) || Date.now();
+                                await redis.zadd(key, score, JSON.stringify(parsed));
+                            }
+                        }
+
+                        socket.to(room.id.toString()).emit("read", { room, messageIds, by: userId });
                     } catch (error) {
                         console.error("Error marking messages as read:", error);
                     }
                 }
             });
 
+
             socket.on("user:online", async ({ userId, peerId }: { userId: number; peerId: number }) => {
                 await redis.set(keys.presence(userId), "online");
-                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!);
+                const room = await findOrCreateDMRoom(userId, peerId, roomRepository!, userRepository!);
                 const user = await userRepository?.findOne({ where: { id: userId } });
                 socket.to(room?.id?.toString()).emit("user:online", { userId, userName: user?.fullName });
             });
@@ -255,7 +409,8 @@ export function attachSocket(server: http.Server) {
 const findOrCreateDMRoom = async (
     userId: number,
     peerId: number,
-    roomRepository: any
+    roomRepository: any,
+    userRepository: any
 ) => {
     // Always order the pair so uniqueness is guaranteed
     const [a, b] = [userId, peerId].sort((x, y) => x - y);
@@ -272,8 +427,8 @@ const findOrCreateDMRoom = async (
 
     if (!room) {
         const users = await Promise.all([
-            TUser.findOneByOrFail({ id: a }),
-            TUser.findOneByOrFail({ id: b }),
+            userRepository!.findOneByOrFail({ id: a }),
+            userRepository!.findOneByOrFail({ id: b }),
         ]);
 
         room = roomRepository.create({

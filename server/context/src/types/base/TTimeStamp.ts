@@ -6,6 +6,6 @@ export class TTimeStamp extends TBase {
     @CreateDateColumn()
     createdAt: string;
 
-    @UpdateDateColumn({ nullable: true })
+    @UpdateDateColumn({ nullable: true, onUpdate: undefined })
     updatedAt?: string;
 }
